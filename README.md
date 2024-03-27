@@ -6,7 +6,7 @@ BidDog is an open-source implementation of am-AMM ([Auction-Managed Automated Ma
 
 ## Concepts
 
-- **Epoch**: The smallest unit of time used by BidDog, set to 1 hour by default.
+- **Epoch**: The smallest unit of time used by BidDog, set to 1 hour long by default.
 - **K**: The delay (in epochs) of a bid being submitted and the bidder becoming the manager of a pool. Set to 24 by default.
 - **`MIN_BID_MULTIPLIER`**: Specifies the minimum bid increment. Set to (1 + 10%) by default.
 - **Manager**: The manager of a pool pays rent (in the bid token) each epoch for the privilege of receiving all swap fee revenue and setting the swap fee.
@@ -51,6 +51,22 @@ When your DEX needs to accrue swap fees to a manager, use:
 ```solidity
 /// @dev Accrues swap fees to the manager
 function _accrueFees(address manager, Currency currency, uint256 amount) internal virtual;
+```
+
+Optionally, you can override the constants used by am-AMM:
+
+```solidity
+function K(PoolId) internal view virtual returns (uint72) {
+    return 24;
+}
+
+function EPOCH_SIZE(PoolId) internal view virtual returns (uint256) {
+    return 1 hours;
+}
+
+function MIN_BID_MULTIPLIER(PoolId) internal view virtual returns (uint256) {
+    return 1.1e18;
+}
 ```
 
 ## Manager usage
@@ -142,11 +158,11 @@ BidDog was built as a state machine with the following state transitions:
 
 ## Modifications
 
-Several modifications were made on the original design to improve UX.
+Several modifications were made on the original am-AMM design to improve UX.
 
 - The auction period `K` is denominated in epochs instead of blocks, where each epoch is an amount of time in seconds. In `AmAmm.sol` this value is set to 1 hour.
-  - This change was made to better support different networks with different block times.
-- When withdrawing from the deposit of the next bid, we enforce `D_top / R_top >= K` instead of `D_top / R_top + D_next / R_next >= K` to ensure that the deposit of a bid cannot go below `R * K` before the bid becomes active.
+  - This change was made to better support different networks with different block times (e.g. L2s).
+- When withdrawing from the deposit of the next bid, we enforce `D_next / R_next >= K` instead of `D_top / R_top + D_next / R_next >= K` to ensure that the deposit of a bid cannot go below `R * K` before the bid becomes active.
 
 ## Installation
 

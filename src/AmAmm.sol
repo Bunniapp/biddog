@@ -26,9 +26,17 @@ abstract contract AmAmm is IAmAmm {
     /// Constants
     /// -----------------------------------------------------------------------
 
-    uint72 internal constant K = 24; // 24 windows (hours)
-    uint256 internal constant EPOCH_SIZE = 1 hours;
-    uint256 internal constant MIN_BID_MULTIPLIER = 1.1e18; // 10%
+    function K(PoolId) internal view virtual returns (uint72) {
+        return 24;
+    }
+
+    function EPOCH_SIZE(PoolId) internal view virtual returns (uint256) {
+        return 1 hours;
+    }
+
+    function MIN_BID_MULTIPLIER(PoolId) internal view virtual returns (uint256) {
+        return 1.1e18;
+    }
 
     /// -----------------------------------------------------------------------
     /// Storage variables
@@ -70,9 +78,10 @@ abstract contract AmAmm is IAmAmm {
         // - deposit needs to cover the rent for K hours
         // - deposit needs to be a multiple of rent
         // - swap fee needs to be <= _maxSwapFee(id)
+        uint256 minBidMultiplier = MIN_BID_MULTIPLIER(id);
         if (
-            manager == address(0) || rent <= _topBids[id].rent.mulWad(MIN_BID_MULTIPLIER)
-                || rent <= _nextBids[id].rent.mulWad(MIN_BID_MULTIPLIER) || deposit < rent * K || deposit % rent != 0
+            manager == address(0) || rent <= _topBids[id].rent.mulWad(minBidMultiplier)
+                || rent <= _nextBids[id].rent.mulWad(minBidMultiplier) || deposit < rent * K(id) || deposit % rent != 0
                 || swapFee > _maxSwapFee(id)
         ) {
             revert AmAmm__InvalidBid();
@@ -82,7 +91,7 @@ abstract contract AmAmm is IAmAmm {
         _refunds[_nextBids[id].manager][id] += _nextBids[id].deposit;
 
         // update next bid
-        _nextBids[id] = Bid(manager, _getEpoch(block.timestamp), swapFee, rent, deposit);
+        _nextBids[id] = Bid(manager, _getEpoch(id, block.timestamp), swapFee, rent, deposit);
 
         /// -----------------------------------------------------------------------
         /// External calls
@@ -124,7 +133,7 @@ abstract contract AmAmm is IAmAmm {
         }
 
         // require D_top / R_top >= K
-        if ((topBid.deposit - amount) / topBid.rent < K) {
+        if ((topBid.deposit - amount) / topBid.rent < K(id)) {
             revert AmAmm__BidLocked();
         }
 
@@ -171,7 +180,7 @@ abstract contract AmAmm is IAmAmm {
         }
 
         // require D_next / R_next >= K
-        if ((nextBid.deposit - amount) / nextBid.rent < K) {
+        if ((nextBid.deposit - amount) / nextBid.rent < K(id)) {
             revert AmAmm__BidLocked();
         }
 
@@ -215,7 +224,7 @@ abstract contract AmAmm is IAmAmm {
         Bid memory topBid = _topBids[id];
 
         // require D_top / R_top >= K
-        if (topBid.manager != address(0) && topBid.deposit / topBid.rent < K) {
+        if (topBid.manager != address(0) && topBid.deposit / topBid.rent < K(id)) {
             revert AmAmm__BidLocked();
         }
 
@@ -394,7 +403,7 @@ abstract contract AmAmm is IAmAmm {
 
     /// @dev Charges rent and updates the top and next bids for a given pool
     function _updateAmAmm(PoolId id) internal virtual returns (address manager, uint24 swapFee) {
-        uint72 currentEpoch = _getEpoch(block.timestamp);
+        uint72 currentEpoch = _getEpoch(id, block.timestamp);
 
         // early return if the pool has already been updated in this epoch
         if (_lastUpdatedEpoch[id] == currentEpoch) {
@@ -485,6 +494,7 @@ abstract contract AmAmm is IAmAmm {
         virtual
         returns (Bid memory, Bid memory, bool updatedTopBid, bool updatedNextBid, uint256 rentCharged)
     {
+        uint72 k = K(id);
         if (nextBid.manager == address(0)) {
             if (topBid.manager != address(0)) {
                 // State B
@@ -522,7 +532,7 @@ abstract contract AmAmm is IAmAmm {
                 uint72 nextBidStartEpoch;
                 unchecked {
                     // unchecked so that if epoch ever overflows, we simply wrap around
-                    nextBidStartEpoch = nextBid.epoch + K;
+                    nextBidStartEpoch = nextBid.epoch + k;
                 }
                 if (currentEpoch >= nextBidStartEpoch) {
                     // State C -> State B
@@ -541,7 +551,7 @@ abstract contract AmAmm is IAmAmm {
                 unchecked {
                     // unchecked so that if epoch ever overflows, we simply wrap around
                     epochsPassed =
-                        uint72(FixedPointMathLib.min(currentEpoch - topBid.epoch, nextBid.epoch + K - topBid.epoch));
+                        uint72(FixedPointMathLib.min(currentEpoch - topBid.epoch, nextBid.epoch + k - topBid.epoch));
                 }
                 uint256 rentOwed = epochsPassed * topBid.rent;
                 if (rentOwed >= topBid.deposit) {
@@ -579,7 +589,7 @@ abstract contract AmAmm is IAmAmm {
                     uint72 nextBidStartEpoch;
                     unchecked {
                         // unchecked so that if epoch ever overflows, we simply wrap around
-                        nextBidStartEpoch = nextBid.epoch + K;
+                        nextBidStartEpoch = nextBid.epoch + k;
                     }
                     if (currentEpoch >= nextBidStartEpoch) {
                         // State D -> State B
@@ -601,7 +611,7 @@ abstract contract AmAmm is IAmAmm {
         return (topBid, nextBid, updatedTopBid, updatedNextBid, rentCharged);
     }
 
-    function _getEpoch(uint256 timestamp) internal pure returns (uint72) {
-        return uint72(timestamp / EPOCH_SIZE);
+    function _getEpoch(PoolId id, uint256 timestamp) internal view returns (uint72) {
+        return uint72(timestamp / EPOCH_SIZE(id));
     }
 }
