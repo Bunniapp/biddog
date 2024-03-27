@@ -1,5 +1,8 @@
 [profile.default]
 optimizer_runs = 1000000
+remappings = [
+  "@uniswap/v4-core/=lib/v4-core/",
+]
 verbosity = 1
 
 # Extreme Fuzzing CI Profile :P

@@ -5,7 +5,7 @@ import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
 
 import "./ERC20Mock.sol";
-import "../../src/lib/AmAmm.sol";
+import "../../src/AmAmm.sol";
 
 contract AmAmmMock is AmAmm {
     using CurrencyLibrary for Currency;
