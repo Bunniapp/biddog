@@ -1,5 +1,7 @@
 # BidDog
 
+<img src="./biddog.png" alt="BidDog logo" align="right" width="120" />
+
 BidDog is an open-source implementation of am-AMM ([Auction-Managed Automated Market Maker](http://arxiv.org/abs/2403.03367v1)), an add-on to decentralized exchanges that minimizes losses to arbitrage.
 
 ## Concepts
