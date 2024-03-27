@@ -7,3 +7,6 @@
 [submodule "lib/create3-factory"]
 	path = lib/create3-factory
 	url = https://github.com/zeframlou/create3-factory
+[submodule "lib/multicaller"]
+	path = lib/multicaller
+	url = https://github.com/vectorized/multicaller
