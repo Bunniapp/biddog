@@ -33,7 +33,7 @@ interface IAmAmm {
     /// @param recipient The address of the recipient
     function withdrawFromTopBid(PoolId id, uint128 amount, address recipient) external;
 
-    /// @notice Withdraws from the deposit of the next bid. Only callable by nextBids[id].manager. Reverts if D_next / R_top < K.
+    /// @notice Withdraws from the deposit of the next bid. Only callable by nextBids[id].manager. Reverts if D_next / R_next < K.
     /// @param id The pool id
     /// @param amount The amount to withdraw, must be a multiple of rent and leave D_next / R_next >= K
     /// @param recipient The address of the recipient
