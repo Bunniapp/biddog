@@ -102,6 +102,48 @@ abstract contract AmAmm is IAmAmm {
     }
 
     /// @inheritdoc IAmAmm
+    function depositIntoTopBid(PoolId id, uint128 amount) external virtual override {
+        /// -----------------------------------------------------------------------
+        /// Validation
+        /// -----------------------------------------------------------------------
+
+        address msgSender = LibMulticaller.senderOrSigner();
+
+        if (!_amAmmEnabled(id)) {
+            revert AmAmm__NotEnabled();
+        }
+
+        /// -----------------------------------------------------------------------
+        /// State updates
+        /// -----------------------------------------------------------------------
+
+        // update state machine
+        _updateAmAmm(id);
+
+        Bid memory topBid = _topBids[id];
+
+        // only the top bid manager can deposit into the top bid
+        if (msgSender != topBid.manager) {
+            revert AmAmm__Unauthorized();
+        }
+
+        // ensure amount is a multiple of rent
+        if (amount % topBid.rent != 0) {
+            revert AmAmm__InvalidDepositAmount();
+        }
+
+        // add amount to top bid deposit
+        _topBids[id].deposit = topBid.deposit + amount;
+
+        /// -----------------------------------------------------------------------
+        /// External calls
+        /// -----------------------------------------------------------------------
+
+        // transfer amount from msg.sender to this contract
+        _pullBidToken(id, msgSender, amount);
+    }
+
+    /// @inheritdoc IAmAmm
     function withdrawFromTopBid(PoolId id, uint128 amount, address recipient) external virtual override {
         /// -----------------------------------------------------------------------
         /// Validation
@@ -146,6 +188,48 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer amount to recipient
         _pushBidToken(id, recipient, amount);
+    }
+
+    /// @inheritdoc IAmAmm
+    function depositIntoNextBid(PoolId id, uint128 amount) external virtual override {
+        /// -----------------------------------------------------------------------
+        /// Validation
+        /// -----------------------------------------------------------------------
+
+        address msgSender = LibMulticaller.senderOrSigner();
+
+        if (!_amAmmEnabled(id)) {
+            revert AmAmm__NotEnabled();
+        }
+
+        /// -----------------------------------------------------------------------
+        /// State updates
+        /// -----------------------------------------------------------------------
+
+        // update state machine
+        _updateAmAmm(id);
+
+        Bid memory nextBid = _nextBids[id];
+
+        // only the next bid manager can deposit into the next bid
+        if (msgSender != nextBid.manager) {
+            revert AmAmm__Unauthorized();
+        }
+
+        // ensure amount is a multiple of rent
+        if (amount % nextBid.rent != 0) {
+            revert AmAmm__InvalidDepositAmount();
+        }
+
+        // add amount to next bid deposit
+        _nextBids[id].deposit = nextBid.deposit + amount;
+
+        /// -----------------------------------------------------------------------
+        /// External calls
+        /// -----------------------------------------------------------------------
+
+        // transfer amount from msg.sender to this contract
+        _pullBidToken(id, msgSender, amount);
     }
 
     /// @inheritdoc IAmAmm

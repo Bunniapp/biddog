@@ -79,11 +79,21 @@ function MIN_BID_MULTIPLIER(PoolId) internal view virtual returns (uint256) {
 /// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K epochs
 function bid(PoolId id, address manager, uint24 swapFee, uint128 rent, uint128 deposit) external;
 
+/// @notice Adds deposit to the top bid. Only callable by topBids[id].manager.
+/// @param id The pool id
+/// @param amount The amount to deposit, must be a multiple of rent
+function depositIntoTopBid(PoolId id, uint128 amount) external;
+
 /// @notice Withdraws from the deposit of the top bid. Only callable by topBids[id].manager. Reverts if D_top / R_top < K.
 /// @param id The pool id
 /// @param amount The amount to withdraw, must be a multiple of rent and leave D_top / R_top >= K
 /// @param recipient The address of the recipient
 function withdrawFromTopBid(PoolId id, uint128 amount, address recipient) external;
+
+/// @notice Adds deposit to the next bid. Only callable by nextBids[id].manager.
+/// @param id The pool id
+/// @param amount The amount to deposit, must be a multiple of rent
+function depositIntoNextBid(PoolId id, uint128 amount) external;
 
 /// @notice Withdraws from the deposit of the next bid. Only callable by nextBids[id].manager. Reverts if D_next / R_next < K.
 /// @param id The pool id

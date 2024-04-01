@@ -404,6 +404,64 @@ contract AmAmmTest is Test {
         amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.5e6, rent: 3e18, deposit: 3 * K * 1e18});
     }
 
+    function test_depositIntoTopBid() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+        skip(K * EPOCH_SIZE);
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        amAmm.depositIntoTopBid(POOL_0, K * 1e18);
+
+        // verify state
+        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        assertEq(bid.manager, address(this), "manager incorrect");
+        assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
+        assertEq(bid.rent, 1e18, "rent incorrect");
+        assertEq(bid.deposit, 3 * K * 1e18, "deposit incorrect");
+        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+
+        // verify token balances
+        assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "manager balance incorrect");
+        assertEq(amAmm.bidToken().balanceOf(address(amAmm)), 3 * K * 1e18, "contract balance incorrect");
+    }
+
+    function test_depositIntoTopBid_fail_notEnabled() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+        skip(K * EPOCH_SIZE);
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        amAmm.setEnabled(POOL_0, false);
+        vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
+        amAmm.depositIntoTopBid(POOL_0, K * 1e18);
+    }
+
+    function test_depositIntoTopBid_fail_unauthorized() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+        skip(K * EPOCH_SIZE);
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        vm.startPrank(address(0x42));
+        vm.expectRevert(IAmAmm.AmAmm__Unauthorized.selector);
+        amAmm.depositIntoTopBid(POOL_0, K * 1e18);
+        vm.stopPrank();
+    }
+
+    function test_depositIntoTopBid_fail_invalidDepositAmount() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+        skip(K * EPOCH_SIZE);
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
+        amAmm.depositIntoTopBid(POOL_0, K * 1e18 - 1);
+    }
+
     function test_withdrawFromTopBid() external {
         // start in state B
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
@@ -467,6 +525,60 @@ contract AmAmmTest is Test {
 
         vm.expectRevert(IAmAmm.AmAmm__BidLocked.selector);
         amAmm.withdrawFromTopBid(POOL_0, 2 * K * 1e18, address(this));
+    }
+
+    function test_depositIntoNextBid() external {
+        // start in state C
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        amAmm.depositIntoNextBid(POOL_0, K * 1e18);
+
+        // verify state
+        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        assertEq(bid.manager, address(this), "manager incorrect");
+        assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
+        assertEq(bid.rent, 1e18, "rent incorrect");
+        assertEq(bid.deposit, 3 * K * 1e18, "deposit incorrect");
+        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+
+        // verify token balances
+        assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "manager balance incorrect");
+        assertEq(amAmm.bidToken().balanceOf(address(amAmm)), 3 * K * 1e18, "contract balance incorrect");
+    }
+
+    function test_depositIntoNextBid_fail_notEnabled() external {
+        // start in state C
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        amAmm.setEnabled(POOL_0, false);
+        vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
+        amAmm.depositIntoNextBid(POOL_0, K * 1e18);
+    }
+
+    function test_depositIntoNextBid_fail_unauthorized() external {
+        // start in state C
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        vm.startPrank(address(0x42));
+        vm.expectRevert(IAmAmm.AmAmm__Unauthorized.selector);
+        amAmm.depositIntoNextBid(POOL_0, K * 1e18);
+        vm.stopPrank();
+    }
+
+    function test_depositIntoNextBid_fail_invalidDepositAmount() external {
+        // start in state C
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18);
+        amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.01e6, rent: 1e18, deposit: 2 * K * 1e18});
+
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
+        amAmm.depositIntoNextBid(POOL_0, K * 1e18 - 1);
     }
 
     function test_withdrawFromNextBid() external {
