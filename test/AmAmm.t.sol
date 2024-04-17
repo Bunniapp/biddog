@@ -38,7 +38,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
     }
 
     function test_stateTransition_CC() external {
@@ -60,7 +60,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1.2e18, "rent incorrect");
         assertEq(bid.deposit, 30e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
     }
 
     function test_stateTransition_CB() external {
@@ -79,7 +79,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
     }
 
     function test_stateTransition_BB() external {
@@ -98,7 +98,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, (K - 3) * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), bid.deposit, "didn't burn rent");
     }
 
@@ -144,7 +144,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -152,7 +152,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 2e18, "rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
     }
 
     function test_stateTransition_DD() external {
@@ -186,7 +186,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
         assertEq(bid.deposit, (K - 3) * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "top bid epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -194,7 +194,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "next bid swapFee incorrect");
         assertEq(bid.rent, 3e18, "next bid rent incorrect");
         assertEq(bid.deposit, 3 * K * 1e18, "next bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp) - 3, "next bid epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()) - 3, "next bid epoch incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), (6 * K - 3) * 1e18, "bid token balance incorrect");
@@ -214,7 +214,7 @@ contract AmAmmTest is Test {
         amAmm.bidToken().mint(address(this), K * 1e18);
 
         // make lower bid
-        uint72 nextBidEpoch = _getEpoch(block.timestamp);
+        uint72 nextBidEpoch = _getEpoch(vm.getBlockTimestamp());
         amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.02e6, rent: 0.5e18, deposit: K * 1e18});
 
         // wait 2K epochs
@@ -227,7 +227,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
         assertEq(bid.deposit, 8 * K * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "top bid epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -266,7 +266,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.05e6, "top bid swapFee incorrect");
         assertEq(bid.rent, 2e18, "top bid rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "top bid epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -308,7 +308,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.05e6, "top bid swapFee incorrect");
         assertEq(bid.rent, 2e18, "top bid rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "top bid epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -337,7 +337,7 @@ contract AmAmmTest is Test {
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
 
         // make lower bid
-        uint72 nextBidEpoch = _getEpoch(block.timestamp);
+        uint72 nextBidEpoch = _getEpoch(vm.getBlockTimestamp());
         amAmm.bid({id: POOL_0, manager: address(this), swapFee: 0.05e6, rent: 0.5e18, deposit: 2 * K * 1e18});
 
         // wait K epochs
@@ -351,7 +351,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
         assertEq(bid.deposit, K * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "top bid epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -374,7 +374,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.05e6, "later top bid swapFee incorrect");
         assertEq(bid.rent, 0.5e18, "later top bid rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "later top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "later top bid epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "later top bid epoch incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -523,7 +523,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, 3 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "manager balance incorrect");
@@ -581,7 +581,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(recipient), K * 1e18, "recipient balance incorrect");
@@ -645,7 +645,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, 3 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "manager balance incorrect");
@@ -699,7 +699,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.01e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(recipient), K * 1e18, "recipient balance incorrect");
@@ -877,7 +877,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.02e6, "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
     }
 
     function test_setBidSwapFee_nextBid() external {
@@ -896,7 +896,7 @@ contract AmAmmTest is Test {
         assertEq(bid.swapFee, 0.02e6, "swapFee incorrect");
         assertEq(bid.rent, 2e18, "rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(block.timestamp), "epoch incorrect");
+        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
     }
 
     function test_setBidSwapFee_fail_notEnabled() external {
