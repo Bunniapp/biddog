@@ -43,7 +43,10 @@ When you need to query the current manager & swap fee value, use:
 
 ```solidity
 /// @dev Charges rent and updates the top and next bids for a given pool
-function _updateAmAmm(PoolId id) internal virtual returns (address manager, uint24 swapFee);
+function _updateAmAmmWrite(PoolId id) internal virtual returns (address manager, uint24 swapFee);
+
+/// @dev View version of _updateAmAmmWrite()
+function _updateAmAmm(PoolId id) internal view virtual returns (Bid memory topBid, Bid memory nextBid);
 ```
 
 When your DEX needs to accrue swap fees to a manager, use:
