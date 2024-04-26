@@ -14,8 +14,8 @@ interface IAmAmm {
 
     struct Bid {
         address manager;
-        uint72 epoch; // epoch when the bid was created / last charged rent
-        uint24 swapFee; // the swap fee of the pool set by this manager
+        uint40 epoch; // epoch when the bid was created / last charged rent
+        bytes7 payload; // payload specifying what parames the manager wants, e.g. swap fee
         uint128 rent; // rent per hour
         uint128 deposit; // rent deposit amount
     }
@@ -23,9 +23,10 @@ interface IAmAmm {
     /// @notice Places a bid to become the manager of a pool
     /// @param id The pool id
     /// @param manager The address of the manager
+    /// @param payload The payload specifying what parameters the manager wants, e.g. swap fee
     /// @param rent The rent per epoch
     /// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K epochs
-    function bid(PoolId id, address manager, uint24 swapFee, uint128 rent, uint128 deposit) external;
+    function bid(PoolId id, address manager, bytes7 payload, uint128 rent, uint128 deposit) external;
 
     /// @notice Adds deposit to the top bid. Only callable by topBids[id].manager.
     /// @param id The pool id
@@ -67,11 +68,11 @@ interface IAmAmm {
     /// @return fees The amount of fees claimed
     function claimFees(Currency currency, address recipient) external returns (uint256 fees);
 
-    /// @notice Sets the swap fee of a pool. Only callable by the manager of either the top bid or the next bid.
+    /// @notice Sets the payload of a pool. Only callable by the manager of either the top bid or the next bid.
     /// @param id The pool id
-    /// @param swapFee The new swap fee
+    /// @param payload The payload specifying e.g. the swap fee
     /// @param topBid True if the top bid manager is setting the fee, false if the next bid manager is setting the fee
-    function setBidSwapFee(PoolId id, uint24 swapFee, bool topBid) external;
+    function setBidPayload(PoolId id, bytes7 payload, bool topBid) external;
 
     /// @notice Gets the top bid of a pool
     function getTopBid(PoolId id) external view returns (Bid memory);

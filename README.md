@@ -14,6 +14,7 @@ BidDog is an open-source implementation of am-AMM ([Auction-Managed Automated Ma
 - **Bid token**: The token used for bidding in the auction, usually the LP token of a DEX pool. Burnt over time by the manager to pay the rent to the remaining LPs.
 - **Fee token**: Token collected as swap fee revenue. There are usually 2 fee tokens for each DEX pool.
 - **Refund**: If you currently own the next bid and someone else makes a higher bid, your deposit is refunded to you, which you will need to claim.
+- **Payload**: Custom payload attached to a bid, e.g. the desired swap fee. `bytes7` is used to allow implementers to customize how the payload is interpreted.
 
 ## Developer usage
 
@@ -23,8 +24,8 @@ Import `biddog/AmAmm.sol` and inherit from `AmAmm`, then implement the following
 /// @dev Returns whether the am-AMM is enabled for a given pool
 function _amAmmEnabled(PoolId id) internal view virtual returns (bool);
 
-/// @dev Returns the maximum swap fee for a given pool
-function _maxSwapFee(PoolId id) internal view virtual returns (uint24);
+/// @dev Validates a bid payload, e.g. ensure the swap fee is below a certain threshold
+function _payloadIsValid(PoolId id, bytes7 payload) internal view virtual returns (bool);
 
 /// @dev Burns bid tokens from address(this)
 function _burnBidToken(PoolId id, uint256 amount) internal virtual;
@@ -59,7 +60,7 @@ function _accrueFees(address manager, Currency currency, uint256 amount) interna
 Optionally, you can override the constants used by am-AMM:
 
 ```solidity
-function K(PoolId) internal view virtual returns (uint72) {
+function K(PoolId) internal view virtual returns (uint40) {
     return 24;
 }
 
@@ -78,9 +79,10 @@ function MIN_BID_MULTIPLIER(PoolId) internal view virtual returns (uint256) {
 /// @notice Places a bid to become the manager of a pool
 /// @param id The pool id
 /// @param manager The address of the manager
+/// @param payload The payload specifying what parameters the manager wants, e.g. swap fee
 /// @param rent The rent per epoch
 /// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K epochs
-function bid(PoolId id, address manager, uint24 swapFee, uint128 rent, uint128 deposit) external;
+function bid(PoolId id, address manager, bytes7 payload, uint128 rent, uint128 deposit) external;
 
 /// @notice Adds deposit to the top bid. Only callable by topBids[id].manager.
 /// @param id The pool id
@@ -122,11 +124,11 @@ function claimRefund(PoolId id, address recipient) external returns (uint256 ref
 /// @return fees The amount of fees claimed
 function claimFees(Currency currency, address recipient) external returns (uint256 fees);
 
-/// @notice Sets the swap fee of a pool. Only callable by the manager of either the top bid or the next bid.
+/// @notice Sets the payload of a pool. Only callable by the manager of either the top bid or the next bid.
 /// @param id The pool id
-/// @param swapFee The new swap fee
+/// @param payload The payload specifying e.g. the swap fee
 /// @param topBid True if the top bid manager is setting the fee, false if the next bid manager is setting the fee
-function setBidSwapFee(PoolId id, uint24 swapFee, bool topBid) external;
+function setBidPayload(PoolId id, bytes7 payload, bool topBid) external;
 ```
 
 ## Design

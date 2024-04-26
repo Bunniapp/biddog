@@ -50,9 +50,10 @@ contract AmAmmMock is AmAmm {
         return enabled[id];
     }
 
-    /// @dev Returns the maximum swap fee for a given pool
-    function _maxSwapFee(PoolId id) internal view override returns (uint24) {
-        return maxSwapFee[id];
+    /// @dev Validates a bid payload
+    function _payloadIsValid(PoolId id, bytes7 payload) internal view override returns (bool) {
+        // first 3 bytes of payload are the swap fee
+        return uint24(bytes3(payload)) <= maxSwapFee[id];
     }
 
     /// @dev Burns bid tokens from address(this)
