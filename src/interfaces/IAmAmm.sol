@@ -12,6 +12,18 @@ interface IAmAmm {
     error AmAmm__Unauthorized();
     error AmAmm__InvalidDepositAmount();
 
+    event SubmitBid(
+        PoolId indexed id, address indexed manager, uint40 indexed epoch, bytes7 payload, uint128 rent, uint128 deposit
+    );
+    event DepositIntoTopBid(PoolId indexed id, address indexed manager, uint128 amount);
+    event WithdrawFromTopBid(PoolId indexed id, address indexed manager, address indexed recipient, uint128 amount);
+    event DepositIntoNextBid(PoolId indexed id, address indexed manager, uint128 amount);
+    event WithdrawFromNextBid(PoolId indexed id, address indexed manager, address indexed recipient, uint128 amount);
+    event CancelNextBid(PoolId indexed id, address indexed manager, address indexed recipient, uint256 refund);
+    event ClaimRefund(PoolId indexed id, address indexed manager, address indexed recipient, uint256 refund);
+    event ClaimFees(Currency indexed currency, address indexed manager, address indexed recipient, uint256 fees);
+    event SetBidPayload(PoolId indexed id, address indexed manager, bytes7 payload, bool topBid);
+
     struct Bid {
         address manager;
         uint40 epoch; // epoch when the bid was created / last charged rent

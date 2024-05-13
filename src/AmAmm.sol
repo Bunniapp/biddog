@@ -89,7 +89,8 @@ abstract contract AmAmm is IAmAmm {
         _refunds[_nextBids[id].manager][id] += _nextBids[id].deposit;
 
         // update next bid
-        _nextBids[id] = Bid(manager, _getEpoch(id, block.timestamp), payload, rent, deposit);
+        uint40 epoch = _getEpoch(id, block.timestamp);
+        _nextBids[id] = Bid(manager, epoch, payload, rent, deposit);
 
         /// -----------------------------------------------------------------------
         /// External calls
@@ -97,6 +98,8 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer deposit from msg.sender to this contract
         _pullBidToken(id, msgSender, deposit);
+
+        emit SubmitBid(id, manager, epoch, payload, rent, deposit);
     }
 
     /// @inheritdoc IAmAmm
@@ -139,6 +142,8 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer amount from msg.sender to this contract
         _pullBidToken(id, msgSender, amount);
+
+        emit DepositIntoTopBid(id, msgSender, amount);
     }
 
     /// @inheritdoc IAmAmm
@@ -186,6 +191,8 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer amount to recipient
         _pushBidToken(id, recipient, amount);
+
+        emit WithdrawFromTopBid(id, msgSender, recipient, amount);
     }
 
     /// @inheritdoc IAmAmm
@@ -228,6 +235,8 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer amount from msg.sender to this contract
         _pullBidToken(id, msgSender, amount);
+
+        emit DepositIntoNextBid(id, msgSender, amount);
     }
 
     /// @inheritdoc IAmAmm
@@ -275,6 +284,8 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer amount to recipient
         _pushBidToken(id, recipient, amount);
+
+        emit WithdrawFromNextBid(id, msgSender, recipient, amount);
     }
 
     /// @inheritdoc IAmAmm
@@ -320,6 +331,8 @@ abstract contract AmAmm is IAmAmm {
         // transfer nextBid.deposit to recipient
         _pushBidToken(id, recipient, nextBid.deposit);
 
+        emit CancelNextBid(id, msgSender, recipient, nextBid.deposit);
+
         return nextBid.deposit;
     }
 
@@ -354,6 +367,8 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer refund to recipient
         _pushBidToken(id, recipient, refund);
+
+        emit ClaimRefund(id, msgSender, recipient, refund);
     }
 
     /// @inheritdoc IAmAmm
@@ -383,6 +398,8 @@ abstract contract AmAmm is IAmAmm {
 
         // transfer fees to recipient
         _transferFeeToken(currency, recipient, fees);
+
+        emit ClaimFees(currency, msgSender, recipient, fees);
     }
 
     /// @inheritdoc IAmAmm
@@ -407,6 +424,8 @@ abstract contract AmAmm is IAmAmm {
         }
 
         relevantBid.payload = payload;
+
+        emit SetBidPayload(id, msgSender, payload, topBid);
     }
 
     /// @inheritdoc IAmAmm
