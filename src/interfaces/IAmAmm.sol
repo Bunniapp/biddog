@@ -100,4 +100,8 @@ interface IAmAmm {
     /// @param manager The address of the manager
     /// @param currency The currency of the fees
     function getFees(address manager, Currency currency) external view returns (uint256);
+
+    /// @notice Triggers a state machine update for the given pool
+    /// @param id The pool id
+    function updateStateMachine(PoolId id) external;
 }

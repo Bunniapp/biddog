@@ -409,6 +409,11 @@ abstract contract AmAmm is IAmAmm {
         relevantBid.payload = payload;
     }
 
+    /// @inheritdoc IAmAmm
+    function updateStateMachine(PoolId id) external override {
+        _updateAmAmmWrite(id);
+    }
+
     /// -----------------------------------------------------------------------
     /// Getters
     /// -----------------------------------------------------------------------
