@@ -62,12 +62,6 @@ interface IAmAmm {
     /// @param recipient The address of the recipient
     function withdrawFromNextBid(PoolId id, uint128 amount, address recipient) external;
 
-    /// @notice Cancels the next bid. Only callable by nextBids[id].manager. Reverts if D_top / R_top < K.
-    /// @param id The pool id
-    /// @param recipient The address of the recipient
-    /// @return refund The amount of refund claimed
-    function cancelNextBid(PoolId id, address recipient) external returns (uint256 refund);
-
     /// @notice Claims the refundable deposit of a pool owed to msg.sender.
     /// @param id The pool id
     /// @param recipient The address of the manager
