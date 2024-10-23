@@ -150,14 +150,14 @@ BidDog was built as a state machine with the following state transitions:
                  │                        │                         │              │
                  │                        │                         │              │
                  │                        │                         │              │
-                 │                        │                         │           after K
-              bid(r)                  after K                    bid(r)        epochs or
-                 │                     epochs                       │            after
-                 │                        │                         │           deposit
-                 │                        │                         │          depletes
+                 │                        │                         │              │
+              bid(r)                  after K                    bid(r)         after K
+                 │                     blocks                       │           blocks
                  │                        │                         │              │
                  │                        │                         │              │
-                 │                        │                         │              │
+                 │                        │   after                 │              │
+                 ├────────────────────────┼──deposit ───────────────┼──────────────┤
+                 │                        │  depletes               │              │
                  ▼                        │                         ▼              │
     ┌────────────────────────┐            │            ┌────────────────────────┐  │
     │                        │            │            │                        │  │
@@ -178,6 +178,7 @@ Several modifications were made on the original am-AMM design to improve UX.
 - The auction period `K` is denominated in epochs instead of blocks, where each epoch is an amount of time in seconds. In `AmAmm.sol` this value is set to 1 hour.
   - This change was made to better support different networks with different block times (e.g. L2s).
 - When withdrawing from the deposit of the next bid, we enforce `D_next / R_next >= K` instead of `D_top / R_top + D_next / R_next >= K` to ensure that the deposit of a bid cannot go below `R * K` before the bid becomes active.
+- After the top bid's deposit depletes we make sure that the next bid has existed for at least `K` epochs before making it active.
 
 ## Installation
 
