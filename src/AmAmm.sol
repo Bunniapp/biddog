@@ -75,7 +75,7 @@ abstract contract AmAmm is IAmAmm {
         // ensure bid is valid
         // - manager can't be zero address
         // - bid needs to be greater than the next bid by >10%
-        // - deposit needs to cover the rent for K hours
+        // - deposit needs to cover the rent for K epochs
         // - deposit needs to be a multiple of rent
         // - payload needs to be valid
         if (

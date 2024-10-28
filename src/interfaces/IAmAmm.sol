@@ -28,7 +28,7 @@ interface IAmAmm {
         address manager;
         uint40 epoch; // epoch when the bid was created / last charged rent
         bytes7 payload; // payload specifying what parames the manager wants, e.g. swap fee
-        uint128 rent; // rent per hour
+        uint128 rent; // rent per epoch
         uint128 deposit; // rent deposit amount
     }
 
