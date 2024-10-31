@@ -71,6 +71,10 @@ function EPOCH_SIZE(PoolId) internal view virtual returns (uint256) {
 function MIN_BID_MULTIPLIER(PoolId) internal view virtual returns (uint256) {
     return 1.1e18;
 }
+
+function MIN_RENT(PoolId) internal view virtual returns (uint128) {
+    return 0;
+}
 ```
 
 ## Manager usage
