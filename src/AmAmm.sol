@@ -38,6 +38,10 @@ abstract contract AmAmm is IAmAmm {
         return 1.1e18;
     }
 
+    function MIN_RENT(PoolId) internal view virtual returns (uint128) {
+        return 0;
+    }
+
     /// -----------------------------------------------------------------------
     /// Storage variables
     /// -----------------------------------------------------------------------
@@ -78,9 +82,10 @@ abstract contract AmAmm is IAmAmm {
         // - deposit needs to cover the rent for K hours
         // - deposit needs to be a multiple of rent
         // - payload needs to be valid
+        // - rent needs to be at least MIN_RENT
         if (
             manager == address(0) || rent <= _nextBids[id].rent.mulWad(MIN_BID_MULTIPLIER(id)) || deposit < rent * K(id)
-                || deposit % rent != 0 || !_payloadIsValid(id, payload)
+                || deposit % rent != 0 || !_payloadIsValid(id, payload) || rent < MIN_RENT(id)
         ) {
             revert AmAmm__InvalidBid();
         }

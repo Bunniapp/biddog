@@ -15,6 +15,7 @@ contract AmAmmMock is AmAmm {
     ERC20Mock public immutable feeToken1;
 
     mapping(PoolId id => bool) public enabled;
+    mapping(PoolId id => uint128) public minRent;
     mapping(PoolId id => uint24) public maxSwapFee;
 
     constructor(ERC20Mock _bidToken, ERC20Mock _feeToken0, ERC20Mock _feeToken1) {
@@ -25,6 +26,10 @@ contract AmAmmMock is AmAmm {
 
     function setEnabled(PoolId id, bool value) external {
         enabled[id] = value;
+    }
+
+    function setMinRent(PoolId id, uint128 value) external {
+        minRent[id] = value;
     }
 
     function setMaxSwapFee(PoolId id, uint24 value) external {
@@ -43,6 +48,10 @@ contract AmAmmMock is AmAmm {
         address manager = _topBids[id].manager;
         feeToken1.mint(address(this), amount);
         _accrueFees(manager, Currency.wrap(address(feeToken1)), amount);
+    }
+
+    function MIN_RENT(PoolId id) internal view override returns (uint128) {
+        return minRent[id];
     }
 
     /// @dev Returns whether the am-AMM is enabled for a given pool

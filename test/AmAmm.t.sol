@@ -702,6 +702,17 @@ contract AmAmmTest is Test {
             rent: 3e18,
             deposit: 3 * K * 1e18
         });
+
+        // rent needs to be >= MIN_RENT(id)
+        amAmm.setMinRent(POOL_0, 1e18);
+        vm.expectRevert(IAmAmm.AmAmm__InvalidBid.selector);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 0.5e18,
+            deposit: 3 * K * 1e18
+        });
     }
 
     function test_depositIntoTopBid() external {
