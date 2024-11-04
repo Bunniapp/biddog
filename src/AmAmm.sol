@@ -79,7 +79,7 @@ abstract contract AmAmm is IAmAmm {
         // ensure bid is valid
         // - manager can't be zero address
         // - bid needs to be greater than the next bid by >10%
-        // - deposit needs to cover the rent for K hours
+        // - deposit needs to cover the rent for K epochs
         // - deposit needs to be a multiple of rent
         // - payload needs to be valid
         // - rent needs to be at least MIN_RENT
@@ -603,14 +603,14 @@ abstract contract AmAmm is IAmAmm {
     ///                 │                        │                         │              │
     ///                 │                        │                         │              │
     ///                 │                        │                         │              │
-    ///                 │                        │                         │           after K
-    ///              bid(r)                  after K                    bid(r)        epochs or
-    ///                 │                     epochs                       │            after
-    ///                 │                        │                         │           deposit
-    ///                 │                        │                         │          depletes
+    ///                 │                        │                         │              │
+    ///              bid(r)                  after K                    bid(r)         after K
+    ///                 │                     blocks                       │           blocks
     ///                 │                        │                         │              │
     ///                 │                        │                         │              │
-    ///                 │                        │                         │              │
+    ///                 │                        │   after                 │              │
+    ///                 ├────────────────────────┼──deposit ───────────────┼──────────────┤
+    ///                 │                        │  depletes               │              │
     ///                 ▼                        │                         ▼              │
     ///    ┌────────────────────────┐            │            ┌────────────────────────┐  │
     ///    │                        │            │            │                        │  │
@@ -692,19 +692,19 @@ abstract contract AmAmm is IAmAmm {
                 }
                 uint256 rentOwed = epochsPassed * topBid.rent;
                 if (rentOwed >= topBid.deposit) {
-                    // State D -> State B
+                    // State D -> State C
                     // top bid has insufficient deposit
-                    // next bid becomes active after top bid depletes its deposit
+                    // clear the top bid and make sure the next bid starts >= the latest processed epoch
                     rentCharged = topBid.deposit;
 
-                    uint40 nextBidStartEpoch;
+                    topBid = Bid(address(0), 0, 0, 0, 0);
                     unchecked {
-                        // unchecked so that if epoch ever overflows, we simply wrap around
-                        nextBidStartEpoch = uint40(topBid.deposit / topBid.rent) + topBid.epoch;
+                        // unchecked so that if epoch ever underflows, we simply wrap around
+                        uint40 latestProcessedEpoch = nextBidIsBetter
+                            ? uint40(FixedPointMathLib.min(currentEpoch, nextBid.epoch + k))
+                            : currentEpoch;
+                        nextBid.epoch = uint40(FixedPointMathLib.max(nextBid.epoch, latestProcessedEpoch - k));
                     }
-                    topBid = nextBid;
-                    topBid.epoch = nextBidStartEpoch;
-                    nextBid = Bid(address(0), 0, 0, 0, 0);
 
                     updatedTopBid = true;
                     updatedNextBid = true;
@@ -821,19 +821,19 @@ abstract contract AmAmm is IAmAmm {
                 }
                 uint256 rentOwed = epochsPassed * topBid.rent;
                 if (rentOwed >= topBid.deposit) {
-                    // State D -> State B
+                    // State D -> State C
                     // top bid has insufficient deposit
-                    // next bid becomes active after top bid depletes its deposit
+                    // clear the top bid and make sure the next bid starts >= the latest processed epoch
                     rentCharged = topBid.deposit;
 
-                    uint40 nextBidStartEpoch;
+                    topBid = Bid(address(0), 0, 0, 0, 0);
                     unchecked {
-                        // unchecked so that if epoch ever overflows, we simply wrap around
-                        nextBidStartEpoch = uint40(topBid.deposit / topBid.rent) + topBid.epoch;
+                        // unchecked so that if epoch ever underflows, we simply wrap around
+                        uint40 latestProcessedEpoch = nextBidIsBetter
+                            ? uint40(FixedPointMathLib.min(currentEpoch, nextBid.epoch + k))
+                            : currentEpoch;
+                        nextBid.epoch = uint40(FixedPointMathLib.max(nextBid.epoch, latestProcessedEpoch - k));
                     }
-                    topBid = nextBid;
-                    topBid.epoch = nextBidStartEpoch;
-                    nextBid = Bid(address(0), 0, 0, 0, 0);
 
                     updatedTopBid = true;
                     updatedNextBid = true;
