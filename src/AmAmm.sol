@@ -294,54 +294,6 @@ abstract contract AmAmm is IAmAmm {
     }
 
     /// @inheritdoc IAmAmm
-    function cancelNextBid(PoolId id, address recipient) external virtual override returns (uint256 refund) {
-        /// -----------------------------------------------------------------------
-        /// Validation
-        /// -----------------------------------------------------------------------
-
-        address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
-
-        /// -----------------------------------------------------------------------
-        /// State updates
-        /// -----------------------------------------------------------------------
-
-        // update state machine
-        _updateAmAmmWrite(id);
-
-        Bid memory nextBid = _nextBids[id];
-
-        // only the next bid manager can withdraw from the next bid
-        if (msgSender != nextBid.manager) {
-            revert AmAmm__Unauthorized();
-        }
-
-        Bid memory topBid = _topBids[id];
-
-        // require D_top / R_top >= K
-        if (topBid.manager != address(0) && topBid.deposit / topBid.rent < K(id)) {
-            revert AmAmm__BidLocked();
-        }
-
-        // delete next bid from storage
-        delete _nextBids[id];
-
-        /// -----------------------------------------------------------------------
-        /// External calls
-        /// -----------------------------------------------------------------------
-
-        // transfer nextBid.deposit to recipient
-        _pushBidToken(id, recipient, nextBid.deposit);
-
-        emit CancelNextBid(id, msgSender, recipient, nextBid.deposit);
-
-        return nextBid.deposit;
-    }
-
-    /// @inheritdoc IAmAmm
     function claimRefund(PoolId id, address recipient) external virtual override returns (uint256 refund) {
         /// -----------------------------------------------------------------------
         /// Validation
