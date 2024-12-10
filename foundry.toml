@@ -4,6 +4,7 @@ remappings = [
   "@uniswap/v4-core/=lib/v4-core/",
 ]
 verbosity = 1
+via_ir = true
 
 # Extreme Fuzzing CI Profile :P
 [profile.ci]
