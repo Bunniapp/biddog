@@ -37,14 +37,14 @@ contract AmAmmMock is AmAmm {
     }
 
     function giveFeeToken0(PoolId id, uint256 amount) external {
-        _updateAmAmm(id);
+        _updateAmAmmWrite(id);
         address manager = _topBids[id].manager;
         feeToken0.mint(address(this), amount);
         _accrueFees(manager, Currency.wrap(address(feeToken0)), amount);
     }
 
     function giveFeeToken1(PoolId id, uint256 amount) external {
-        _updateAmAmm(id);
+        _updateAmAmmWrite(id);
         address manager = _topBids[id].manager;
         feeToken1.mint(address(this), amount);
         _accrueFees(manager, Currency.wrap(address(feeToken1)), amount);
