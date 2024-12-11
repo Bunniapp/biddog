@@ -19,7 +19,6 @@ interface IAmAmm {
     event WithdrawFromTopBid(PoolId indexed id, address indexed manager, address indexed recipient, uint128 amount);
     event DepositIntoNextBid(PoolId indexed id, address indexed manager, uint128 amount);
     event WithdrawFromNextBid(PoolId indexed id, address indexed manager, address indexed recipient, uint128 amount);
-    event CancelNextBid(PoolId indexed id, address indexed manager, address indexed recipient, uint256 refund);
     event ClaimRefund(PoolId indexed id, address indexed manager, address indexed recipient, uint256 refund);
     event ClaimFees(Currency indexed currency, address indexed manager, address indexed recipient, uint256 fees);
     event SetBidPayload(PoolId indexed id, address indexed manager, bytes7 payload, bool topBid);
