@@ -178,6 +178,10 @@ Several modifications were made on the original am-AMM design to improve UX.
 - When withdrawing from the deposit of the next bid, we enforce `D_next / R_next >= K` instead of `D_top / R_top + D_next / R_next >= K` to ensure that the deposit of a bid cannot go below `R * K` before the bid becomes active.
 - After the top bid's deposit depletes we make sure that the next bid has existed for at least `K` blocks before making it active.
 
+## Known issues
+
+- `blockIdx` is a `uint48`, and when it overflows the `currentBlockIdx >= nextBidStartBlockIdx` checks will have undefined behavior. Even with a block time of 10ms it would take ~89 thousand years for the overflow to occur, so it's unlikely to be a problem in practice.
+
 ## Installation
 
 To install with [Foundry](https://github.com/gakonst/foundry):
