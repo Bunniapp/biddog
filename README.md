@@ -6,15 +6,15 @@ BidDog is an open-source implementation of am-AMM ([Auction-Managed Automated Ma
 
 ## Concepts
 
-- **Epoch**: The smallest unit of time used by BidDog, set to 1 hour long by default.
-- **K**: The delay (in epochs) of a bid being submitted and the bidder becoming the manager of a pool. Set to 24 by default.
+- **Block Index (blockIdx)**: A block number minus the block number of the contract deployment.
+- **K**: The delay (in blocks) of a bid being submitted and the bidder becoming the manager of a pool. Set to 7200 by default.
 - **`MIN_BID_MULTIPLIER`**: Specifies the minimum bid increment. Set to (1 + 10%) by default.
-- **Manager**: The manager of a pool pays rent (in the bid token) each epoch for the privilege of receiving all swap fee revenue and setting the swap fee.
-- **Bid**: Each bid in the auction specifies its rent (amount of bid tokens paid per epoch) and deposit (used to pay rent, >= rent \* K). The bid with the highest rent wins the auction.
+- **Manager**: The manager of a pool pays rent (in the bid token) each block for the privilege of receiving all swap fee revenue and setting the swap fee.
+- **Bid**: Each bid in the auction specifies its rent (amount of bid tokens paid per block) and deposit (used to pay rent, >= rent \* K). The bid with the highest rent wins the auction.
 - **Bid token**: The token used for bidding in the auction, usually the LP token of a DEX pool. Burnt over time by the manager to pay the rent to the remaining LPs.
 - **Fee token**: Token collected as swap fee revenue. There are usually 2 fee tokens for each DEX pool.
 - **Refund**: If you currently own the next bid and someone else makes a higher bid, your deposit is refunded to you, which you will need to claim.
-- **Payload**: Custom payload attached to a bid, e.g. the desired swap fee. `bytes7` is used to allow implementers to customize how the payload is interpreted.
+- **Payload**: Custom payload attached to a bid, e.g. the desired swap fee. `bytes6` is used to allow implementers to customize how the payload is interpreted.
 
 ## Developer usage
 
@@ -25,7 +25,7 @@ Import `biddog/AmAmm.sol` and inherit from `AmAmm`, then implement the following
 function _amAmmEnabled(PoolId id) internal view virtual returns (bool);
 
 /// @dev Validates a bid payload, e.g. ensure the swap fee is below a certain threshold
-function _payloadIsValid(PoolId id, bytes7 payload) internal view virtual returns (bool);
+function _payloadIsValid(PoolId id, bytes6 payload) internal view virtual returns (bool);
 
 /// @dev Burns bid tokens from address(this)
 function _burnBidToken(PoolId id, uint256 amount) internal virtual;
@@ -61,11 +61,7 @@ Optionally, you can override the constants used by am-AMM:
 
 ```solidity
 function K(PoolId) internal view virtual returns (uint40) {
-    return 24;
-}
-
-function EPOCH_SIZE(PoolId) internal view virtual returns (uint256) {
-    return 1 hours;
+    return 7200;
 }
 
 function MIN_BID_MULTIPLIER(PoolId) internal view virtual returns (uint256) {
@@ -84,9 +80,9 @@ function MIN_RENT(PoolId) internal view virtual returns (uint128) {
 /// @param id The pool id
 /// @param manager The address of the manager
 /// @param payload The payload specifying what parameters the manager wants, e.g. swap fee
-/// @param rent The rent per epoch
-/// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K epochs
-function bid(PoolId id, address manager, bytes7 payload, uint128 rent, uint128 deposit) external;
+/// @param rent The rent per block
+/// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K blocks
+function bid(PoolId id, address manager, bytes6 payload, uint128 rent, uint128 deposit) external;
 
 /// @notice Adds deposit to the top bid. Only callable by topBids[id].manager.
 /// @param id The pool id
@@ -132,7 +128,7 @@ function claimFees(Currency currency, address recipient) external returns (uint2
 /// @param id The pool id
 /// @param payload The payload specifying e.g. the swap fee
 /// @param topBid True if the top bid manager is setting the fee, false if the next bid manager is setting the fee
-function setBidPayload(PoolId id, bytes7 payload, bool topBid) external;
+function setBidPayload(PoolId id, bytes6 payload, bool topBid) external;
 ```
 
 ## Design
@@ -179,10 +175,8 @@ BidDog was built as a state machine with the following state transitions:
 
 Several modifications were made on the original am-AMM design to improve UX.
 
-- The auction period `K` is denominated in epochs instead of blocks, where each epoch is an amount of time in seconds. In `AmAmm.sol` this value is set to 1 hour.
-  - This change was made to better support different networks with different block times (e.g. L2s).
 - When withdrawing from the deposit of the next bid, we enforce `D_next / R_next >= K` instead of `D_top / R_top + D_next / R_next >= K` to ensure that the deposit of a bid cannot go below `R * K` before the bid becomes active.
-- After the top bid's deposit depletes we make sure that the next bid has existed for at least `K` epochs before making it active.
+- After the top bid's deposit depletes we make sure that the next bid has existed for at least `K` blocks before making it active.
 
 ## Installation
 

@@ -10,21 +10,22 @@ import "../src/interfaces/IAmAmm.sol";
 contract AmAmmTest is Test {
     PoolId constant POOL_0 = PoolId.wrap(bytes32(0));
 
-    uint128 internal constant K = 24; // 24 windows (hours)
-    uint256 internal constant EPOCH_SIZE = 1 hours;
+    uint128 internal constant K = 7200; // 7200 blocks
     uint256 internal constant MIN_BID_MULTIPLIER = 1.1e18; // 10%
 
     AmAmmMock amAmm;
+    uint256 internal deployBlockNumber;
 
     function setUp() external {
+        deployBlockNumber = vm.getBlockNumber();
         amAmm = new AmAmmMock(new ERC20Mock(), new ERC20Mock(), new ERC20Mock());
         amAmm.bidToken().approve(address(amAmm), type(uint256).max);
         amAmm.setEnabled(POOL_0, true);
         amAmm.setMaxSwapFee(POOL_0, 0.1e6);
     }
 
-    function _swapFeeToPayload(uint24 swapFee) internal pure returns (bytes7) {
-        return bytes7(bytes3(swapFee));
+    function _swapFeeToPayload(uint24 swapFee) internal pure returns (bytes6) {
+        return bytes6(bytes3(swapFee));
     }
 
     function test_stateTransition_AC() external {
@@ -48,12 +49,12 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
     }
 
     function test_stateTransition_CC() external {
         // mint bid tokens
-        amAmm.bidToken().mint(address(this), K * 1e18 + 30e18);
+        amAmm.bidToken().mint(address(this), K * 1e18 + K * 1.2e18);
 
         // make first bid
         amAmm.bid({
@@ -65,18 +66,24 @@ contract AmAmmTest is Test {
         });
 
         // make second bid
-        amAmm.bid({id: POOL_0, manager: address(this), payload: _swapFeeToPayload(0.01e6), rent: 1.2e18, deposit: 30e18});
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1.2e18,
+            deposit: K * 1.2e18
+        });
 
         // verify state
         IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
         assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "didn't take bid tokens");
-        assertEq(amAmm.bidToken().balanceOf(address(amAmm)), K * 1e18 + 30e18, "didn't give bid tokens");
+        assertEq(amAmm.bidToken().balanceOf(address(amAmm)), K * 1e18 + K * 1.2e18, "didn't give bid tokens");
         assertEq(amAmm.getRefund(address(this), POOL_0), K * 1e18, "didn't refund first bid");
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1.2e18, "rent incorrect");
-        assertEq(bid.deposit, 30e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.deposit, K * 1.2e18, "deposit incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
     }
 
     function test_stateTransition_CB() external {
@@ -92,8 +99,8 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait K epochs
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        skipBlocks(K);
 
         // verify state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -101,7 +108,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
     }
 
     function test_stateTransition_BB() external {
@@ -117,8 +124,8 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait K + 3 epochs
-        skip((K + 3) * EPOCH_SIZE);
+        // wait K + 3 blocks
+        skipBlocks(K + 3);
 
         // verify state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -126,7 +133,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, (K - 3) * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), bid.deposit, "didn't burn rent");
     }
 
@@ -143,8 +150,8 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait 2K epochs
-        skip(2 * K * EPOCH_SIZE);
+        // wait 2K blocks
+        skipBlocks(2 * K);
 
         // verify state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -152,7 +159,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0), "swapFee incorrect");
         assertEq(bid.rent, 0, "rent incorrect");
         assertEq(bid.deposit, 0, "deposit incorrect");
-        assertEq(bid.epoch, 0, "epoch incorrect");
+        assertEq(bid.blockIdx, 0, "blockIdx incorrect");
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), bid.deposit, "didn't burn rent");
     }
 
@@ -169,8 +176,8 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait K epochs
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        skipBlocks(K);
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
@@ -190,7 +197,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -198,7 +205,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 2e18, "rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
     }
 
     function test_stateTransition_DD() external {
@@ -214,8 +221,8 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait K epochs
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        skipBlocks(K);
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
@@ -241,8 +248,8 @@ contract AmAmmTest is Test {
             deposit: 3 * K * 1e18
         });
 
-        // wait 3 epochs
-        skip(3 * EPOCH_SIZE);
+        // wait 3 blocks
+        skipBlocks(3);
 
         // verify top bid state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -250,7 +257,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
         assertEq(bid.deposit, (K - 3) * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -258,7 +265,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 3e18, "next bid rent incorrect");
         assertEq(bid.deposit, 3 * K * 1e18, "next bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()) - 3, "next bid epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx() - 3, "next bid blockIdx incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), (6 * K - 3) * 1e18, "bid token balance incorrect");
@@ -277,14 +284,14 @@ contract AmAmmTest is Test {
             deposit: 10 * K * 1e18
         });
 
-        // wait K epochs
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        skipBlocks(K);
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), K * 1e18);
 
         // make lower bid
-        uint40 nextBidEpoch = _getEpoch(vm.getBlockTimestamp());
+        uint48 nextBidBlockIdx = _getBlockIdx();
         amAmm.bid({
             id: POOL_0,
             manager: address(this),
@@ -293,9 +300,9 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait 2K epochs
+        // wait 2K blocks
         // because the bid is lower than the top bid (plus minimum increment), it should be ignored
-        skip(2 * K * EPOCH_SIZE);
+        skipBlocks(2 * K);
 
         // verify top bid state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -303,7 +310,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
         assertEq(bid.deposit, 8 * K * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -311,13 +318,13 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 0.5e18, "next bid rent incorrect");
         assertEq(bid.deposit, K * 1e18, "next bid deposit incorrect");
-        assertEq(bid.epoch, nextBidEpoch, "next bid epoch incorrect");
+        assertEq(bid.blockIdx, nextBidBlockIdx, "next bid blockIdx incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), 9 * K * 1e18, "bid token balance incorrect");
     }
 
-    function test_stateTransition_DB_afterKEpochs() external {
+    function test_stateTransition_DB_afterKBlocks() external {
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
 
@@ -330,8 +337,8 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait K epochs
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        skipBlocks(K);
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
@@ -345,8 +352,8 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait K epochs
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        skipBlocks(K);
 
         // verify top bid state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -354,7 +361,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 2e18, "top bid rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -362,7 +369,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0), "next bid swapFee incorrect");
         assertEq(bid.rent, 0, "next bid rent incorrect");
         assertEq(bid.deposit, 0, "next bid deposit incorrect");
-        assertEq(bid.epoch, 0, "next bid epoch incorrect");
+        assertEq(bid.blockIdx, 0, "next bid blockIdx incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), 3 * K * 1e18, "bid token balance incorrect");
@@ -384,14 +391,14 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait 2 * K - 3 epochs
-        skip((2 * K - 3) * EPOCH_SIZE);
+        // wait 2 * K - 3 blocks
+        skipBlocks((2 * K - 3));
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
 
         // make next bid
-        uint40 nextBidEpoch = _getEpoch(vm.getBlockTimestamp());
+        uint48 nextBidBlockIdx = _getBlockIdx();
         amAmm.bid({
             id: POOL_0,
             manager: address(this),
@@ -400,8 +407,8 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait 3 epochs
-        skip(3 * EPOCH_SIZE);
+        // wait 3 blocks
+        skipBlocks(3);
 
         // verify top bid state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -409,7 +416,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, 0, "top bid swapFee incorrect");
         assertEq(bid.rent, 0, "top bid rent incorrect");
         assertEq(bid.deposit, 0, "top bid deposit incorrect");
-        assertEq(bid.epoch, 0, "top bid epoch incorrect");
+        assertEq(bid.blockIdx, 0, "top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -417,7 +424,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 2e18, "next bid rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "next bid deposit incorrect");
-        assertEq(bid.epoch, nextBidEpoch, "next bid epoch incorrect");
+        assertEq(bid.blockIdx, nextBidBlockIdx, "next bid blockIdx incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), 2 * K * 1e18, "bid token balance incorrect");
@@ -436,15 +443,15 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait K epochs
-        // top bid will last 2K epochs from now
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        // top bid will last 2K blocks from now
+        skipBlocks(K);
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
 
         // make lower bid
-        uint40 nextBidEpoch = _getEpoch(vm.getBlockTimestamp());
+        uint48 nextBidBlockIdx = _getBlockIdx();
         amAmm.bid({
             id: POOL_0,
             manager: address(this),
@@ -453,10 +460,10 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait K epochs
-        // top bid should last another K epochs and next bid doesn't activate
+        // wait K blocks
+        // top bid should last another K blocks and next bid doesn't activate
         // since the rent is lower than the top bid
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         // verify top bid state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -464,7 +471,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
         assertEq(bid.deposit, K * 1e18, "top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "top bid epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -472,14 +479,14 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 0.5e18, "next bid rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "next bid deposit incorrect");
-        assertEq(bid.epoch, nextBidEpoch, "next bid epoch incorrect");
+        assertEq(bid.blockIdx, nextBidBlockIdx, "next bid blockIdx incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), 3 * K * 1e18, "bid token balance incorrect");
 
-        // wait K epochs
+        // wait K blocks
         // top bid's deposit is now depleted so next bid should activate
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         // verify top bid state
         bid = amAmm.getTopBidWrite(POOL_0);
@@ -487,7 +494,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "later top bid swapFee incorrect");
         assertEq(bid.rent, 0.5e18, "later top bid rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "later top bid deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "later top bid epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "later top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -495,10 +502,10 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0), "later next bid swapFee incorrect");
         assertEq(bid.rent, 0, "later next bid rent incorrect");
         assertEq(bid.deposit, 0, "later next bid deposit incorrect");
-        assertEq(bid.epoch, 0, "later next bid epoch incorrect");
+        assertEq(bid.blockIdx, 0, "later next bid blockIdx incorrect");
     }
 
-    function test_stateTransition_DBA_afterKEpochs() external {
+    function test_stateTransition_DBA_afterKBlocks() external {
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
 
@@ -511,8 +518,8 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait K epochs
-        skip(K * EPOCH_SIZE);
+        // wait K blocks
+        skipBlocks(K);
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
@@ -526,8 +533,8 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait 2K epochs
-        skip(2 * K * EPOCH_SIZE);
+        // wait 2K blocks
+        skipBlocks(2 * K);
 
         // verify top bid state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -535,7 +542,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0), "top bid swapFee incorrect");
         assertEq(bid.rent, 0, "top bid rent incorrect");
         assertEq(bid.deposit, 0, "top bid deposit incorrect");
-        assertEq(bid.epoch, 0, "top bid epoch incorrect");
+        assertEq(bid.blockIdx, 0, "top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -543,7 +550,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0), "next bid swapFee incorrect");
         assertEq(bid.rent, 0, "next bid rent incorrect");
         assertEq(bid.deposit, 0, "next bid deposit incorrect");
-        assertEq(bid.epoch, 0, "next bid epoch incorrect");
+        assertEq(bid.blockIdx, 0, "next bid blockIdx incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), K * 1e18, "bid token balance incorrect");
@@ -565,8 +572,8 @@ contract AmAmmTest is Test {
             deposit: K * 1e18
         });
 
-        // wait 2 * K - 3 epochs
-        skip((2 * K - 3) * EPOCH_SIZE);
+        // wait 2 * K - 3 blocks
+        skipBlocks((2 * K - 3));
 
         // mint bid tokens
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
@@ -580,8 +587,8 @@ contract AmAmmTest is Test {
             deposit: 2 * K * 1e18
         });
 
-        // wait 2 * K epochs
-        skip((2 * K) * EPOCH_SIZE);
+        // wait 2 * K blocks
+        skipBlocks((2 * K));
 
         // verify top bid state
         IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
@@ -589,7 +596,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0), "top bid swapFee incorrect");
         assertEq(bid.rent, 0, "top bid rent incorrect");
         assertEq(bid.deposit, 0, "top bid deposit incorrect");
-        assertEq(bid.epoch, 0, "top bid epoch incorrect");
+        assertEq(bid.blockIdx, 0, "top bid blockIdx incorrect");
 
         // verify next bid state
         bid = amAmm.getNextBid(POOL_0);
@@ -597,7 +604,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0), "next bid swapFee incorrect");
         assertEq(bid.rent, 0, "next bid rent incorrect");
         assertEq(bid.deposit, 0, "next bid deposit incorrect");
-        assertEq(bid.epoch, 0, "next bid epoch incorrect");
+        assertEq(bid.blockIdx, 0, "next bid blockIdx incorrect");
 
         // verify bid token balance
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), 0, "bid token balance incorrect");
@@ -626,7 +633,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
         amAmm.bid({
             id: POOL_0,
@@ -726,7 +733,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         amAmm.bidToken().mint(address(this), K * 1e18);
         amAmm.depositIntoTopBid(POOL_0, K * 1e18);
@@ -737,7 +744,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, 3 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "manager balance incorrect");
@@ -754,7 +761,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         amAmm.bidToken().mint(address(this), K * 1e18);
         amAmm.setEnabled(POOL_0, false);
@@ -772,7 +779,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         amAmm.bidToken().mint(address(this), K * 1e18);
         vm.startPrank(address(0x42));
@@ -791,7 +798,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         amAmm.bidToken().mint(address(this), K * 1e18);
         vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
@@ -808,7 +815,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         address recipient = address(0x42);
         amAmm.withdrawFromTopBid(POOL_0, K * 1e18, recipient);
@@ -819,7 +826,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(recipient), K * 1e18, "recipient balance incorrect");
@@ -835,7 +842,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         amAmm.setEnabled(POOL_0, false);
         vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
@@ -852,7 +859,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         address recipient = address(0x42);
         vm.startPrank(recipient);
@@ -871,7 +878,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
         amAmm.withdrawFromTopBid(POOL_0, K * 1e18 - 1, address(this));
@@ -887,7 +894,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         vm.expectRevert(IAmAmm.AmAmm__BidLocked.selector);
         amAmm.withdrawFromTopBid(POOL_0, 2 * K * 1e18, address(this));
@@ -913,7 +920,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, 3 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "manager balance incorrect");
@@ -991,7 +998,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
 
         // verify token balances
         assertEq(amAmm.bidToken().balanceOf(recipient), K * 1e18, "recipient balance incorrect");
@@ -1071,7 +1078,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
         amAmm.bid({
             id: POOL_0,
@@ -1111,7 +1118,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
         amAmm.bid({
             id: POOL_0,
@@ -1146,7 +1153,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
         amAmm.bid({
             id: POOL_0,
@@ -1182,7 +1189,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         amAmm.setBidPayload(POOL_0, _swapFeeToPayload(0.02e6), true);
 
@@ -1192,7 +1199,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
     }
 
     function test_setBidPayload_nextBid() external {
@@ -1205,7 +1212,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
         amAmm.bid({
             id: POOL_0,
@@ -1223,7 +1230,7 @@ contract AmAmmTest is Test {
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
         assertEq(bid.rent, 2e18, "rent incorrect");
         assertEq(bid.deposit, 2 * K * 1e18, "deposit incorrect");
-        assertEq(bid.epoch, _getEpoch(vm.getBlockTimestamp()), "epoch incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
     }
 
     function test_setBidPayload_fail_notEnabled() external {
@@ -1236,7 +1243,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         amAmm.setEnabled(POOL_0, false);
         vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
@@ -1253,7 +1260,7 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         address eve = address(0x42);
         vm.startPrank(eve);
@@ -1272,13 +1279,17 @@ contract AmAmmTest is Test {
             rent: 1e18,
             deposit: 2 * K * 1e18
         });
-        skip(K * EPOCH_SIZE);
+        skipBlocks(K);
 
         vm.expectRevert(IAmAmm.AmAmm__InvalidBid.selector);
         amAmm.setBidPayload(POOL_0, _swapFeeToPayload(0.5e6), true);
     }
 
-    function _getEpoch(uint256 timestamp) internal pure returns (uint40) {
-        return uint40(timestamp / EPOCH_SIZE);
+    function _getBlockIdx() internal view returns (uint48) {
+        return uint48(vm.getBlockNumber() - deployBlockNumber);
+    }
+
+    function skipBlocks(uint256 numBlocks) internal {
+        vm.roll(vm.getBlockNumber() + numBlocks);
     }
 }
