@@ -60,7 +60,7 @@ contract AmAmmMock is AmAmm {
     }
 
     /// @dev Validates a bid payload
-    function _payloadIsValid(PoolId id, bytes7 payload) internal view override returns (bool) {
+    function _payloadIsValid(PoolId id, bytes6 payload) internal view override returns (bool) {
         // first 3 bytes of payload are the swap fee
         return uint24(bytes3(payload)) <= maxSwapFee[id];
     }

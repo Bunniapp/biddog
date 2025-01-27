@@ -13,7 +13,12 @@ interface IAmAmm {
     error AmAmm__InvalidDepositAmount();
 
     event SubmitBid(
-        PoolId indexed id, address indexed manager, uint40 indexed epoch, bytes7 payload, uint128 rent, uint128 deposit
+        PoolId indexed id,
+        address indexed manager,
+        uint48 indexed blockIdx,
+        bytes6 payload,
+        uint128 rent,
+        uint128 deposit
     );
     event DepositIntoTopBid(PoolId indexed id, address indexed manager, uint128 amount);
     event WithdrawFromTopBid(PoolId indexed id, address indexed manager, address indexed recipient, uint128 amount);
@@ -21,13 +26,13 @@ interface IAmAmm {
     event WithdrawFromNextBid(PoolId indexed id, address indexed manager, address indexed recipient, uint128 amount);
     event ClaimRefund(PoolId indexed id, address indexed manager, address indexed recipient, uint256 refund);
     event ClaimFees(Currency indexed currency, address indexed manager, address indexed recipient, uint256 fees);
-    event SetBidPayload(PoolId indexed id, address indexed manager, bytes7 payload, bool topBid);
+    event SetBidPayload(PoolId indexed id, address indexed manager, bytes6 payload, bool topBid);
 
     struct Bid {
         address manager;
-        uint40 epoch; // epoch when the bid was created / last charged rent
-        bytes7 payload; // payload specifying what parames the manager wants, e.g. swap fee
-        uint128 rent; // rent per epoch
+        uint48 blockIdx; // block number (minus contract deployment block) when the bid was created / last charged rent
+        bytes6 payload; // payload specifying what parames the manager wants, e.g. swap fee
+        uint128 rent; // rent per block
         uint128 deposit; // rent deposit amount
     }
 
@@ -35,9 +40,9 @@ interface IAmAmm {
     /// @param id The pool id
     /// @param manager The address of the manager
     /// @param payload The payload specifying what parameters the manager wants, e.g. swap fee
-    /// @param rent The rent per epoch
-    /// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K epochs
-    function bid(PoolId id, address manager, bytes7 payload, uint128 rent, uint128 deposit) external;
+    /// @param rent The rent per block
+    /// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K blocks
+    function bid(PoolId id, address manager, bytes6 payload, uint128 rent, uint128 deposit) external;
 
     /// @notice Adds deposit to the top bid. Only callable by topBids[id].manager.
     /// @param id The pool id
@@ -77,7 +82,7 @@ interface IAmAmm {
     /// @param id The pool id
     /// @param payload The payload specifying e.g. the swap fee
     /// @param topBid True if the top bid manager is setting the fee, false if the next bid manager is setting the fee
-    function setBidPayload(PoolId id, bytes7 payload, bool topBid) external;
+    function setBidPayload(PoolId id, bytes6 payload, bool topBid) external;
 
     /// @notice Gets the top bid of a pool
     function getTopBid(PoolId id) external view returns (Bid memory);
