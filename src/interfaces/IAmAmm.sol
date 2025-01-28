@@ -27,6 +27,16 @@ interface IAmAmm {
     event ClaimRefund(PoolId indexed id, address indexed manager, address indexed recipient, uint256 refund);
     event ClaimFees(Currency indexed currency, address indexed manager, address indexed recipient, uint256 fees);
     event SetBidPayload(PoolId indexed id, address indexed manager, bytes6 payload, bool topBid);
+    event IncreaseBidRent(
+        PoolId indexed id,
+        address indexed manager,
+        uint128 additionalRent,
+        uint128 updatedDeposit,
+        bool topBid,
+        address indexed withdrawRecipient,
+        uint128 amountDeposited,
+        uint128 amountWithdrawn
+    );
 
     struct Bid {
         address manager;
@@ -77,6 +87,23 @@ interface IAmAmm {
     /// @param recipient The address of the recipient
     /// @return fees The amount of fees claimed
     function claimFees(Currency currency, address recipient) external returns (uint256 fees);
+
+    /// @notice Increases the rent of a bid. Only callable by the manager of the relevant bid. Reverts if D / R < K after the update.
+    /// Reverts if updated deposit is not a multiple of the new rent. Noop if additionalRent is 0. Will take/send the difference between the old and new deposits.
+    /// @param id The pool id
+    /// @param additionalRent The additional rent to add
+    /// @param updatedDeposit The updated deposit amount of the bid
+    /// @param topBid True if the top bid manager is increasing the rent and deposit, false if the next bid manager is increasing the rent and deposit
+    /// @param withdrawRecipient The address to withdraw the difference between the old and new deposits to
+    /// @return amountDeposited The amount of deposit added, if any
+    /// @return amountWithdrawn The amount of deposit withdrawn, if any
+    function increaseBidRent(
+        PoolId id,
+        uint128 additionalRent,
+        uint128 updatedDeposit,
+        bool topBid,
+        address withdrawRecipient
+    ) external returns (uint128 amountDeposited, uint128 amountWithdrawn);
 
     /// @notice Sets the payload of a pool. Only callable by the manager of either the top bid or the next bid.
     /// @param id The pool id

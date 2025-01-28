@@ -371,6 +371,82 @@ abstract contract AmAmm is IAmAmm {
     }
 
     /// @inheritdoc IAmAmm
+    function increaseBidRent(
+        PoolId id,
+        uint128 additionalRent,
+        uint128 updatedDeposit,
+        bool topBid,
+        address withdrawRecipient
+    ) external virtual override returns (uint128 amountDeposited, uint128 amountWithdrawn) {
+        /// -----------------------------------------------------------------------
+        /// Validation
+        /// -----------------------------------------------------------------------
+
+        address msgSender = LibMulticaller.senderOrSigner();
+
+        if (!_amAmmEnabled(id)) {
+            revert AmAmm__NotEnabled();
+        }
+
+        // noop if additionalRent is 0
+        if (additionalRent == 0) return (0, 0);
+
+        /// -----------------------------------------------------------------------
+        /// State updates
+        /// -----------------------------------------------------------------------
+
+        // update state machine
+        _updateAmAmmWrite(id);
+
+        Bid storage relevantBidStorage = topBid ? _topBids[id] : _nextBids[id];
+        Bid memory relevantBid = relevantBidStorage;
+
+        // must be the manager of the relevant bid
+        if (msgSender != relevantBid.manager) {
+            revert AmAmm__Unauthorized();
+        }
+
+        uint128 newRent = relevantBid.rent + additionalRent;
+
+        // ensure that:
+        // - updatedDeposit is a multiple of newRent
+        // - newRent is >= MIN_RENT(id)
+        if (updatedDeposit % newRent != 0 || newRent < MIN_RENT(id)) {
+            revert AmAmm__InvalidBid();
+        }
+
+        // require D / R >= K
+        if (updatedDeposit / newRent < K(id)) {
+            revert AmAmm__BidLocked();
+        }
+
+        // update relevant bid
+        relevantBidStorage.rent = newRent;
+        relevantBidStorage.deposit = updatedDeposit;
+
+        /// -----------------------------------------------------------------------
+        /// External calls
+        /// -----------------------------------------------------------------------
+
+        unchecked {
+            // explicitly comparing updatedDeposit and relevantBid.deposit so subtractions are always safe
+            if (updatedDeposit > relevantBid.deposit) {
+                // transfer amount from msg.sender to this contract
+                amountDeposited = updatedDeposit - relevantBid.deposit;
+                _pullBidToken(id, msgSender, amountDeposited);
+            } else if (updatedDeposit < relevantBid.deposit) {
+                // transfer amount from this contract to withdrawRecipient
+                amountWithdrawn = relevantBid.deposit - updatedDeposit;
+                _pushBidToken(id, withdrawRecipient, amountWithdrawn);
+            }
+        }
+
+        emit IncreaseBidRent(
+            id, msgSender, additionalRent, updatedDeposit, topBid, withdrawRecipient, amountDeposited, amountWithdrawn
+        );
+    }
+
+    /// @inheritdoc IAmAmm
     function setBidPayload(PoolId id, bytes6 payload, bool topBid) external virtual override {
         address msgSender = LibMulticaller.senderOrSigner();
 

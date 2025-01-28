@@ -1179,6 +1179,253 @@ contract AmAmmTest is Test {
         assertEq(amAmm.feeToken1().balanceOf(recipient), 2 ether, "recipient balance1 incorrect");
     }
 
+    function test_increaseBidRent_topBid_addDeposit() external {
+        uint128 additionalRent = 1e18;
+        uint128 additionalDeposit = 2e18;
+
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18 + additionalDeposit);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: 2 * K * 1e18
+        });
+        skipBlocks(K);
+
+        uint256 beforeUserBalance = amAmm.bidToken().balanceOf(address(this));
+        uint256 beforeAmAmmBalance = amAmm.bidToken().balanceOf(address(amAmm));
+        (uint128 amountDeposited, uint128 amountWithdrawn) =
+            amAmm.increaseBidRent(POOL_0, additionalRent, 2 * K * 1e18 + additionalDeposit, true, address(this));
+
+        // verify state
+        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        assertEq(bid.manager, address(this), "manager incorrect");
+        assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
+        assertEq(bid.rent, 1e18 + additionalRent, "rent incorrect");
+        assertEq(bid.deposit, 2 * K * 1e18 + additionalDeposit, "deposit incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
+
+        // verify balances
+        assertEq(
+            amAmm.bidToken().balanceOf(address(this)), beforeUserBalance - additionalDeposit, "user balance incorrect"
+        );
+        assertEq(
+            amAmm.bidToken().balanceOf(address(amAmm)),
+            beforeAmAmmBalance + additionalDeposit,
+            "amAmm balance incorrect"
+        );
+        assertEq(amountDeposited, additionalDeposit, "amountDeposited incorrect");
+        assertEq(amountWithdrawn, 0, "amountWithdrawn incorrect");
+    }
+
+    function test_increaseBidRent_topBid_withdrawDeposit() external {
+        uint128 additionalRent = 1e18;
+        uint128 withdrawAmount = K * 1e18;
+
+        // start in state B
+        amAmm.bidToken().mint(address(this), 3 * K * 1e18);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: 3 * K * 1e18
+        });
+        skipBlocks(K);
+
+        uint256 beforeUserBalance = amAmm.bidToken().balanceOf(address(this));
+        uint256 beforeAmAmmBalance = amAmm.bidToken().balanceOf(address(amAmm));
+        (uint128 amountDeposited, uint128 amountWithdrawn) =
+            amAmm.increaseBidRent(POOL_0, additionalRent, 3 * K * 1e18 - withdrawAmount, true, address(this));
+
+        // verify state
+        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        assertEq(bid.manager, address(this), "manager incorrect");
+        assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
+        assertEq(bid.rent, 1e18 + additionalRent, "rent incorrect");
+        assertEq(bid.deposit, 3 * K * 1e18 - withdrawAmount, "deposit incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
+
+        // verify balances
+        assertEq(
+            amAmm.bidToken().balanceOf(address(this)), beforeUserBalance + withdrawAmount, "user balance incorrect"
+        );
+        assertEq(
+            amAmm.bidToken().balanceOf(address(amAmm)), beforeAmAmmBalance - withdrawAmount, "amAmm balance incorrect"
+        );
+        assertEq(amountDeposited, 0, "amountDeposited incorrect");
+        assertEq(amountWithdrawn, withdrawAmount, "amountWithdrawn incorrect");
+    }
+
+    function test_increaseBidRent_nextBid_addDeposit() external {
+        uint128 additionalRent = 1e18;
+        uint128 additionalDeposit = K * 1e18;
+
+        // start in state D
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: K * 1e18
+        });
+        skipBlocks(K);
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18 + additionalDeposit);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.02e6),
+            rent: 2e18,
+            deposit: 2 * K * 1e18
+        });
+
+        uint256 beforeUserBalance = amAmm.bidToken().balanceOf(address(this));
+        uint256 beforeAmAmmBalance = amAmm.bidToken().balanceOf(address(amAmm));
+        amAmm.increaseBidRent(POOL_0, additionalRent, 2 * K * 1e18 + additionalDeposit, false, address(this));
+
+        // verify state
+        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        assertEq(bid.manager, address(this), "manager incorrect");
+        assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
+        assertEq(bid.rent, 2e18 + additionalRent, "rent incorrect");
+        assertEq(bid.deposit, 2 * K * 1e18 + additionalDeposit, "deposit incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
+
+        // verify balances
+        assertEq(
+            amAmm.bidToken().balanceOf(address(this)), beforeUserBalance - additionalDeposit, "user balance incorrect"
+        );
+        assertEq(
+            amAmm.bidToken().balanceOf(address(amAmm)),
+            beforeAmAmmBalance + additionalDeposit,
+            "amAmm balance incorrect"
+        );
+    }
+
+    function test_increaseBidRent_nextBid_withdrawDeposit() external {
+        uint128 additionalRent = 1e18;
+        uint128 withdrawAmount = K * 1e18;
+
+        // start in state D
+        amAmm.bidToken().mint(address(this), K * 1e18);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: K * 1e18
+        });
+        skipBlocks(K);
+        amAmm.bidToken().mint(address(this), 4 * K * 1e18);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.02e6),
+            rent: 2e18,
+            deposit: 4 * K * 1e18
+        });
+
+        uint256 beforeUserBalance = amAmm.bidToken().balanceOf(address(this));
+        uint256 beforeAmAmmBalance = amAmm.bidToken().balanceOf(address(amAmm));
+        (uint128 amountDeposited, uint128 amountWithdrawn) =
+            amAmm.increaseBidRent(POOL_0, additionalRent, 4 * K * 1e18 - withdrawAmount, false, address(this));
+
+        // verify state
+        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        assertEq(bid.manager, address(this), "manager incorrect");
+        assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
+        assertEq(bid.rent, 2e18 + additionalRent, "rent incorrect");
+        assertEq(bid.deposit, 4 * K * 1e18 - withdrawAmount, "deposit incorrect");
+        assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
+
+        // verify balances
+        assertEq(
+            amAmm.bidToken().balanceOf(address(this)), beforeUserBalance + withdrawAmount, "user balance incorrect"
+        );
+        assertEq(
+            amAmm.bidToken().balanceOf(address(amAmm)), beforeAmAmmBalance - withdrawAmount, "amAmm balance incorrect"
+        );
+        assertEq(amountDeposited, 0, "amountDeposited incorrect");
+        assertEq(amountWithdrawn, withdrawAmount, "amountWithdrawn incorrect");
+    }
+
+    function test_increaseBidRent_fail_notEnabled() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18 + 1e18);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: 2 * K * 1e18
+        });
+        skipBlocks(K);
+
+        amAmm.setEnabled(POOL_0, false);
+        vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
+        amAmm.increaseBidRent(POOL_0, 1e18, 1e18, true, address(this));
+    }
+
+    function test_increaseBidRent_fail_unauthorized() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18 + 1e18);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: 2 * K * 1e18
+        });
+        skipBlocks(K);
+
+        address eve = address(0x42);
+        vm.startPrank(eve);
+        vm.expectRevert(IAmAmm.AmAmm__Unauthorized.selector);
+        amAmm.increaseBidRent(POOL_0, 1e18, 1e18, true, address(this));
+        vm.stopPrank();
+    }
+
+    function test_increaseBidRent_fail_invalidBid() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18 + 1);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: 2 * K * 1e18
+        });
+        skipBlocks(K);
+
+        // updated deposit not a multiple of rent
+        vm.expectRevert(IAmAmm.AmAmm__InvalidBid.selector);
+        amAmm.increaseBidRent(POOL_0, 1e18, 1, true, address(this));
+
+        // rent too low
+        amAmm.setMinRent(POOL_0, 10e18);
+        vm.expectRevert(IAmAmm.AmAmm__InvalidBid.selector);
+        amAmm.increaseBidRent(POOL_0, 1e18, 2 * K * 1e18, true, address(this));
+    }
+
+    function test_increaseBidRent_fail_bidLocked() external {
+        // start in state B
+        amAmm.bidToken().mint(address(this), 2 * K * 1e18 + 1e18);
+        amAmm.bid({
+            id: POOL_0,
+            manager: address(this),
+            payload: _swapFeeToPayload(0.01e6),
+            rent: 1e18,
+            deposit: 2 * K * 1e18
+        });
+        skipBlocks(K);
+
+        vm.expectRevert(IAmAmm.AmAmm__BidLocked.selector);
+        amAmm.increaseBidRent(POOL_0, K * 1e18 - 1e18, 2 * K * 1e18, true, address(this));
+    }
+
     function test_setBidPayload_topBid() external {
         // start in state B
         amAmm.bidToken().mint(address(this), 2 * K * 1e18);
