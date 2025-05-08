@@ -10,6 +10,7 @@ import {SafeCastLib} from "solady/utils/SafeCastLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
 import {IAmAmm} from "./interfaces/IAmAmm.sol";
+import {BlockNumberLib} from "./libraries/BlockNumberLib.sol";
 
 /// @title AmAmm
 /// @author zefram.eth
@@ -61,7 +62,7 @@ abstract contract AmAmm is IAmAmm {
     /// -----------------------------------------------------------------------
 
     constructor() {
-        _deploymentBlockNumber = block.number;
+        _deploymentBlockNumber = BlockNumberLib.getBlockNumber();
     }
 
     /// -----------------------------------------------------------------------
@@ -105,7 +106,7 @@ abstract contract AmAmm is IAmAmm {
         _refunds[_nextBids[id].manager][id] += _nextBids[id].deposit;
 
         // update next bid
-        uint48 blockIdx = uint48(block.number - _deploymentBlockNumber);
+        uint48 blockIdx = uint48(BlockNumberLib.getBlockNumber() - _deploymentBlockNumber);
         _nextBids[id] = Bid(manager, blockIdx, payload, rent, deposit);
 
         /// -----------------------------------------------------------------------
@@ -553,7 +554,7 @@ abstract contract AmAmm is IAmAmm {
 
     /// @dev Charges rent and updates the top and next bids for a given pool
     function _updateAmAmmWrite(PoolId id) internal virtual returns (address manager, bytes6 payload) {
-        uint48 currentBlockIdx = uint48(block.number - _deploymentBlockNumber);
+        uint48 currentBlockIdx = uint48(BlockNumberLib.getBlockNumber() - _deploymentBlockNumber);
 
         // early return if the pool has already been updated in this block
         // condition is also true if no update has occurred for type(uint48).max blocks
@@ -620,7 +621,7 @@ abstract contract AmAmm is IAmAmm {
 
     /// @dev View version of _updateAmAmmWrite()
     function _updateAmAmmView(PoolId id) internal view virtual returns (Bid memory topBid, Bid memory nextBid) {
-        uint48 currentBlockIdx = uint48(block.number - _deploymentBlockNumber);
+        uint48 currentBlockIdx = uint48(BlockNumberLib.getBlockNumber() - _deploymentBlockNumber);
 
         topBid = _topBids[id];
         nextBid = _nextBids[id];
