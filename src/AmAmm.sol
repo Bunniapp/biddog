@@ -624,6 +624,13 @@ abstract contract AmAmm is IAmAmm {
         topBid = _topBids[id];
         nextBid = _nextBids[id];
 
+        // early return if the pool has already been updated in this block
+        // condition is also true if no update has occurred for type(uint48).max blocks
+        // which is extremely unlikely
+        if (_lastUpdatedBlockIdx[id] == currentBlockIdx) {
+            return (topBid, nextBid);
+        }
+
         // run state machine
         {
             bool stepHasUpdatedTopBid;
