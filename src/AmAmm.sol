@@ -553,14 +553,14 @@ abstract contract AmAmm is IAmAmm {
     /// -----------------------------------------------------------------------
 
     /// @dev Charges rent and updates the top and next bids for a given pool
-    function _updateAmAmmWrite(PoolId id) internal virtual returns (address manager, bytes6 payload) {
-        uint48 currentBlockIdx = uint48(BlockNumberLib.getBlockNumber() - _deploymentBlockNumber);
+    function _updateAmAmmWrite(PoolId id) internal virtual {
+        uint48 currentBlockIdx = uint48(block.number - _deploymentBlockNumber);
 
         // early return if the pool has already been updated in this block
         // condition is also true if no update has occurred for type(uint48).max blocks
         // which is extremely unlikely
         if (_lastUpdatedBlockIdx[id] == currentBlockIdx) {
-            return (_topBids[id].manager, _topBids[id].payload);
+            return;
         }
 
         Bid memory topBid = _topBids[id];
@@ -615,8 +615,6 @@ abstract contract AmAmm is IAmAmm {
         if (rentCharged != 0) {
             _burnBidToken(id, rentCharged);
         }
-
-        return (topBid.manager, topBid.payload);
     }
 
     /// @dev View version of _updateAmAmmWrite()
