@@ -42,7 +42,7 @@ contract AmAmmTest is Test {
         });
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, false);
         assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "didn't take bid tokens");
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), K * 1e18, "didn't give bid tokens");
         assertEq(bid.manager, address(this), "manager incorrect");
@@ -75,7 +75,7 @@ contract AmAmmTest is Test {
         });
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, false);
         assertEq(amAmm.bidToken().balanceOf(address(this)), 0, "didn't take bid tokens");
         assertEq(amAmm.bidToken().balanceOf(address(amAmm)), K * 1e18 + K * 1.2e18, "didn't give bid tokens");
         assertEq(amAmm.getRefund(address(this), POOL_0), K * 1e18, "didn't refund first bid");
@@ -103,7 +103,7 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -128,7 +128,7 @@ contract AmAmmTest is Test {
         skipBlocks(K + 3);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -154,7 +154,7 @@ contract AmAmmTest is Test {
         skipBlocks(2 * K);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(0), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0), "swapFee incorrect");
         assertEq(bid.rent, 0, "rent incorrect");
@@ -192,7 +192,7 @@ contract AmAmmTest is Test {
         });
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -200,7 +200,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, _getBlockIdx(), "blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 2e18, "rent incorrect");
@@ -252,7 +252,7 @@ contract AmAmmTest is Test {
         skipBlocks(3);
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(this), "top bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
@@ -260,7 +260,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 3e18, "next bid rent incorrect");
@@ -305,7 +305,7 @@ contract AmAmmTest is Test {
         skipBlocks(2 * K);
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(this), "top bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
@@ -313,7 +313,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 0.5e18, "next bid rent incorrect");
@@ -356,7 +356,7 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(this), "top bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 2e18, "top bid rent incorrect");
@@ -364,7 +364,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(0), "next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0), "next bid swapFee incorrect");
         assertEq(bid.rent, 0, "next bid rent incorrect");
@@ -411,7 +411,7 @@ contract AmAmmTest is Test {
         skipBlocks(3);
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(0), "top bid manager incorrect");
         assertEq(bid.payload, 0, "top bid swapFee incorrect");
         assertEq(bid.rent, 0, "top bid rent incorrect");
@@ -419,7 +419,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, 0, "top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 2e18, "next bid rent incorrect");
@@ -466,7 +466,7 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(this), "top bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "top bid swapFee incorrect");
         assertEq(bid.rent, 1e18, "top bid rent incorrect");
@@ -474,7 +474,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, _getBlockIdx(), "top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "next bid swapFee incorrect");
         assertEq(bid.rent, 0.5e18, "next bid rent incorrect");
@@ -489,7 +489,7 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         // verify top bid state
-        bid = amAmm.getTopBidWrite(POOL_0);
+        bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(this), "later top bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.05e6), "later top bid swapFee incorrect");
         assertEq(bid.rent, 0.5e18, "later top bid rent incorrect");
@@ -497,7 +497,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, _getBlockIdx(), "later top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(0), "later next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0), "later next bid swapFee incorrect");
         assertEq(bid.rent, 0, "later next bid rent incorrect");
@@ -537,7 +537,7 @@ contract AmAmmTest is Test {
         skipBlocks(2 * K);
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(0), "top bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0), "top bid swapFee incorrect");
         assertEq(bid.rent, 0, "top bid rent incorrect");
@@ -545,7 +545,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, 0, "top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(0), "next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0), "next bid swapFee incorrect");
         assertEq(bid.rent, 0, "next bid rent incorrect");
@@ -591,7 +591,7 @@ contract AmAmmTest is Test {
         skipBlocks((2 * K));
 
         // verify top bid state
-        IAmAmm.Bid memory bid = amAmm.getTopBidWrite(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBidWrite(POOL_0, true);
         assertEq(bid.manager, address(0), "top bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0), "top bid swapFee incorrect");
         assertEq(bid.rent, 0, "top bid rent incorrect");
@@ -599,7 +599,7 @@ contract AmAmmTest is Test {
         assertEq(bid.blockIdx, 0, "top bid blockIdx incorrect");
 
         // verify next bid state
-        bid = amAmm.getNextBid(POOL_0);
+        bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(0), "next bid manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0), "next bid swapFee incorrect");
         assertEq(bid.rent, 0, "next bid rent incorrect");
@@ -736,10 +736,10 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         amAmm.bidToken().mint(address(this), K * 1e18);
-        amAmm.depositIntoTopBid(POOL_0, K * 1e18);
+        amAmm.depositIntoBid(POOL_0, K * 1e18, true);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -766,7 +766,7 @@ contract AmAmmTest is Test {
         amAmm.bidToken().mint(address(this), K * 1e18);
         amAmm.setEnabled(POOL_0, false);
         vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
-        amAmm.depositIntoTopBid(POOL_0, K * 1e18);
+        amAmm.depositIntoBid(POOL_0, K * 1e18, true);
     }
 
     function test_depositIntoTopBid_fail_unauthorized() external {
@@ -784,7 +784,7 @@ contract AmAmmTest is Test {
         amAmm.bidToken().mint(address(this), K * 1e18);
         vm.startPrank(address(0x42));
         vm.expectRevert(IAmAmm.AmAmm__Unauthorized.selector);
-        amAmm.depositIntoTopBid(POOL_0, K * 1e18);
+        amAmm.depositIntoBid(POOL_0, K * 1e18, true);
         vm.stopPrank();
     }
 
@@ -802,7 +802,7 @@ contract AmAmmTest is Test {
 
         amAmm.bidToken().mint(address(this), K * 1e18);
         vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
-        amAmm.depositIntoTopBid(POOL_0, K * 1e18 - 1);
+        amAmm.depositIntoBid(POOL_0, K * 1e18 - 1, true);
     }
 
     function test_withdrawFromTopBid() external {
@@ -818,10 +818,10 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         address recipient = address(0x42);
-        amAmm.withdrawFromTopBid(POOL_0, K * 1e18, recipient);
+        amAmm.withdrawFromBid(POOL_0, K * 1e18, recipient, true);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -846,7 +846,7 @@ contract AmAmmTest is Test {
 
         amAmm.setEnabled(POOL_0, false);
         vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
-        amAmm.withdrawFromTopBid(POOL_0, K * 1e18, address(this));
+        amAmm.withdrawFromBid(POOL_0, K * 1e18, address(this), true);
     }
 
     function test_withdrawFromTopBid_fail_unauthorized() external {
@@ -864,7 +864,7 @@ contract AmAmmTest is Test {
         address recipient = address(0x42);
         vm.startPrank(recipient);
         vm.expectRevert(IAmAmm.AmAmm__Unauthorized.selector);
-        amAmm.withdrawFromTopBid(POOL_0, K * 1e18, recipient);
+        amAmm.withdrawFromBid(POOL_0, K * 1e18, recipient, true);
         vm.stopPrank();
     }
 
@@ -881,7 +881,7 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
-        amAmm.withdrawFromTopBid(POOL_0, K * 1e18 - 1, address(this));
+        amAmm.withdrawFromBid(POOL_0, K * 1e18 - 1, address(this), true);
     }
 
     function test_withdrawFromTopBid_bidLocked() external {
@@ -897,7 +897,7 @@ contract AmAmmTest is Test {
         skipBlocks(K);
 
         vm.expectRevert(IAmAmm.AmAmm__BidLocked.selector);
-        amAmm.withdrawFromTopBid(POOL_0, 2 * K * 1e18, address(this));
+        amAmm.withdrawFromBid(POOL_0, 2 * K * 1e18, address(this), true);
     }
 
     function test_depositIntoNextBid() external {
@@ -912,10 +912,10 @@ contract AmAmmTest is Test {
         });
 
         amAmm.bidToken().mint(address(this), K * 1e18);
-        amAmm.depositIntoNextBid(POOL_0, K * 1e18);
+        amAmm.depositIntoBid(POOL_0, K * 1e18, false);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -941,7 +941,7 @@ contract AmAmmTest is Test {
         amAmm.bidToken().mint(address(this), K * 1e18);
         amAmm.setEnabled(POOL_0, false);
         vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
-        amAmm.depositIntoNextBid(POOL_0, K * 1e18);
+        amAmm.depositIntoBid(POOL_0, K * 1e18, false);
     }
 
     function test_depositIntoNextBid_fail_unauthorized() external {
@@ -958,7 +958,7 @@ contract AmAmmTest is Test {
         amAmm.bidToken().mint(address(this), K * 1e18);
         vm.startPrank(address(0x42));
         vm.expectRevert(IAmAmm.AmAmm__Unauthorized.selector);
-        amAmm.depositIntoNextBid(POOL_0, K * 1e18);
+        amAmm.depositIntoBid(POOL_0, K * 1e18, false);
         vm.stopPrank();
     }
 
@@ -975,7 +975,7 @@ contract AmAmmTest is Test {
 
         amAmm.bidToken().mint(address(this), K * 1e18);
         vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
-        amAmm.depositIntoNextBid(POOL_0, K * 1e18 - 1);
+        amAmm.depositIntoBid(POOL_0, K * 1e18 - 1, false);
     }
 
     function test_withdrawFromNextBid() external {
@@ -990,10 +990,10 @@ contract AmAmmTest is Test {
         });
 
         address recipient = address(0x42);
-        amAmm.withdrawFromNextBid(POOL_0, K * 1e18, recipient);
+        amAmm.withdrawFromBid(POOL_0, K * 1e18, recipient, false);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -1017,7 +1017,7 @@ contract AmAmmTest is Test {
 
         amAmm.setEnabled(POOL_0, false);
         vm.expectRevert(IAmAmm.AmAmm__NotEnabled.selector);
-        amAmm.withdrawFromNextBid(POOL_0, K * 1e18, address(this));
+        amAmm.withdrawFromBid(POOL_0, K * 1e18, address(this), false);
     }
 
     function test_withdrawFromNextBid_fail_unauthorized() external {
@@ -1034,7 +1034,7 @@ contract AmAmmTest is Test {
         address recipient = address(0x42);
         vm.startPrank(recipient);
         vm.expectRevert(IAmAmm.AmAmm__Unauthorized.selector);
-        amAmm.withdrawFromNextBid(POOL_0, K * 1e18, recipient);
+        amAmm.withdrawFromBid(POOL_0, K * 1e18, recipient, false);
         vm.stopPrank();
     }
 
@@ -1050,7 +1050,7 @@ contract AmAmmTest is Test {
         });
 
         vm.expectRevert(IAmAmm.AmAmm__InvalidDepositAmount.selector);
-        amAmm.withdrawFromNextBid(POOL_0, K * 1e18 - 1, address(this));
+        amAmm.withdrawFromBid(POOL_0, K * 1e18 - 1, address(this), false);
     }
 
     function test_withdrawFromNextBid_fail_bidLocked() external {
@@ -1065,7 +1065,7 @@ contract AmAmmTest is Test {
         });
 
         vm.expectRevert(IAmAmm.AmAmm__BidLocked.selector);
-        amAmm.withdrawFromNextBid(POOL_0, 2 * K * 1e18, address(this));
+        amAmm.withdrawFromBid(POOL_0, 2 * K * 1e18, address(this), false);
     }
 
     function test_claimRefund() external {
@@ -1200,7 +1200,7 @@ contract AmAmmTest is Test {
             amAmm.increaseBidRent(POOL_0, additionalRent, 2 * K * 1e18 + additionalDeposit, true, address(this));
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18 + additionalRent, "rent incorrect");
@@ -1241,7 +1241,7 @@ contract AmAmmTest is Test {
             amAmm.increaseBidRent(POOL_0, additionalRent, 3 * K * 1e18 - withdrawAmount, true, address(this));
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.01e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18 + additionalRent, "rent incorrect");
@@ -1287,7 +1287,7 @@ contract AmAmmTest is Test {
         amAmm.increaseBidRent(POOL_0, additionalRent, 2 * K * 1e18 + additionalDeposit, false, address(this));
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
         assertEq(bid.rent, 2e18 + additionalRent, "rent incorrect");
@@ -1334,7 +1334,7 @@ contract AmAmmTest is Test {
             amAmm.increaseBidRent(POOL_0, additionalRent, 4 * K * 1e18 - withdrawAmount, false, address(this));
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
         assertEq(bid.rent, 2e18 + additionalRent, "rent incorrect");
@@ -1441,7 +1441,7 @@ contract AmAmmTest is Test {
         amAmm.setBidPayload(POOL_0, _swapFeeToPayload(0.02e6), true);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getTopBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, true);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
         assertEq(bid.rent, 1e18, "rent incorrect");
@@ -1472,7 +1472,7 @@ contract AmAmmTest is Test {
         amAmm.setBidPayload(POOL_0, _swapFeeToPayload(0.02e6), false);
 
         // verify state
-        IAmAmm.Bid memory bid = amAmm.getNextBid(POOL_0);
+        IAmAmm.Bid memory bid = amAmm.getBid(POOL_0, false);
         assertEq(bid.manager, address(this), "manager incorrect");
         assertEq(bid.payload, _swapFeeToPayload(0.02e6), "swapFee incorrect");
         assertEq(bid.rent, 2e18, "rent incorrect");

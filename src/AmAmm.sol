@@ -24,6 +24,15 @@ abstract contract AmAmm is IAmAmm {
     using FixedPointMathLib for *;
 
     /// -----------------------------------------------------------------------
+    /// Modifiers
+    /// -----------------------------------------------------------------------
+
+    modifier onlyAmAmmEnabled(PoolId id) {
+        _checkAmAmmEnabled(id);
+        _;
+    }
+
+    /// -----------------------------------------------------------------------
     /// Constants
     /// -----------------------------------------------------------------------
 
@@ -70,16 +79,13 @@ abstract contract AmAmm is IAmAmm {
     /// -----------------------------------------------------------------------
 
     /// @inheritdoc IAmAmm
-    function bid(PoolId id, address manager, bytes6 payload, uint128 rent, uint128 deposit) external virtual override {
-        /// -----------------------------------------------------------------------
-        /// Validation
-        /// -----------------------------------------------------------------------
-
+    function bid(PoolId id, address manager, bytes6 payload, uint128 rent, uint128 deposit)
+        external
+        virtual
+        override
+        onlyAmAmmEnabled(id)
+    {
         address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
 
         /// -----------------------------------------------------------------------
         /// State updates
@@ -120,16 +126,8 @@ abstract contract AmAmm is IAmAmm {
     }
 
     /// @inheritdoc IAmAmm
-    function depositIntoTopBid(PoolId id, uint128 amount) external virtual override {
-        /// -----------------------------------------------------------------------
-        /// Validation
-        /// -----------------------------------------------------------------------
-
+    function depositIntoBid(PoolId id, uint128 amount, bool isTopBid) external virtual override onlyAmAmmEnabled(id) {
         address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
 
         /// -----------------------------------------------------------------------
         /// State updates
@@ -138,20 +136,21 @@ abstract contract AmAmm is IAmAmm {
         // update state machine
         _updateAmAmmWrite(id);
 
-        Bid memory topBid = _topBids[id];
+        Bid storage bidStorage = isTopBid ? _topBids[id] : _nextBids[id];
+        Bid memory bidMemory = bidStorage;
 
         // only the top bid manager can deposit into the top bid
-        if (msgSender != topBid.manager) {
+        if (msgSender != bidMemory.manager) {
             revert AmAmm__Unauthorized();
         }
 
         // ensure amount is a multiple of rent
-        if (amount % topBid.rent != 0) {
+        if (amount % bidMemory.rent != 0) {
             revert AmAmm__InvalidDepositAmount();
         }
 
         // add amount to top bid deposit
-        _topBids[id].deposit = topBid.deposit + amount;
+        bidStorage.deposit = bidMemory.deposit + amount;
 
         /// -----------------------------------------------------------------------
         /// External calls
@@ -160,20 +159,21 @@ abstract contract AmAmm is IAmAmm {
         // transfer amount from msg.sender to this contract
         _pullBidToken(id, msgSender, amount);
 
-        emit DepositIntoTopBid(id, msgSender, amount);
+        if (isTopBid) {
+            emit DepositIntoTopBid(id, msgSender, amount);
+        } else {
+            emit DepositIntoNextBid(id, msgSender, amount);
+        }
     }
 
     /// @inheritdoc IAmAmm
-    function withdrawFromTopBid(PoolId id, uint128 amount, address recipient) external virtual override {
-        /// -----------------------------------------------------------------------
-        /// Validation
-        /// -----------------------------------------------------------------------
-
+    function withdrawFromBid(PoolId id, uint128 amount, address recipient, bool isTopBid)
+        external
+        virtual
+        override
+        onlyAmAmmEnabled(id)
+    {
         address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
 
         /// -----------------------------------------------------------------------
         /// State updates
@@ -182,25 +182,26 @@ abstract contract AmAmm is IAmAmm {
         // update state machine
         _updateAmAmmWrite(id);
 
-        Bid memory topBid = _topBids[id];
+        Bid storage bidStorage = isTopBid ? _topBids[id] : _nextBids[id];
+        Bid memory bidMemory = bidStorage;
 
-        // only the top bid manager can withdraw from the top bid
-        if (msgSender != topBid.manager) {
+        // only the manager of the relevant bid can withdraw from the bid
+        if (msgSender != bidMemory.manager) {
             revert AmAmm__Unauthorized();
         }
 
         // ensure amount is a multiple of rent
-        if (amount % topBid.rent != 0) {
+        if (amount % bidMemory.rent != 0) {
             revert AmAmm__InvalidDepositAmount();
         }
 
-        // require D_top / R_top >= K
-        if ((topBid.deposit - amount) / topBid.rent < K(id)) {
+        // require D / R >= K
+        if ((bidMemory.deposit - amount) / bidMemory.rent < K(id)) {
             revert AmAmm__BidLocked();
         }
 
-        // deduct amount from top bid deposit
-        _topBids[id].deposit = topBid.deposit - amount;
+        // deduct amount from bid deposit
+        bidStorage.deposit = bidMemory.deposit - amount;
 
         /// -----------------------------------------------------------------------
         /// External calls
@@ -209,113 +210,22 @@ abstract contract AmAmm is IAmAmm {
         // transfer amount to recipient
         _pushBidToken(id, recipient, amount);
 
-        emit WithdrawFromTopBid(id, msgSender, recipient, amount);
+        if (isTopBid) {
+            emit WithdrawFromTopBid(id, msgSender, recipient, amount);
+        } else {
+            emit WithdrawFromNextBid(id, msgSender, recipient, amount);
+        }
     }
 
     /// @inheritdoc IAmAmm
-    function depositIntoNextBid(PoolId id, uint128 amount) external virtual override {
-        /// -----------------------------------------------------------------------
-        /// Validation
-        /// -----------------------------------------------------------------------
-
+    function claimRefund(PoolId id, address recipient)
+        external
+        virtual
+        override
+        onlyAmAmmEnabled(id)
+        returns (uint256 refund)
+    {
         address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
-
-        /// -----------------------------------------------------------------------
-        /// State updates
-        /// -----------------------------------------------------------------------
-
-        // update state machine
-        _updateAmAmmWrite(id);
-
-        Bid memory nextBid = _nextBids[id];
-
-        // only the next bid manager can deposit into the next bid
-        if (msgSender != nextBid.manager) {
-            revert AmAmm__Unauthorized();
-        }
-
-        // ensure amount is a multiple of rent
-        if (amount % nextBid.rent != 0) {
-            revert AmAmm__InvalidDepositAmount();
-        }
-
-        // add amount to next bid deposit
-        _nextBids[id].deposit = nextBid.deposit + amount;
-
-        /// -----------------------------------------------------------------------
-        /// External calls
-        /// -----------------------------------------------------------------------
-
-        // transfer amount from msg.sender to this contract
-        _pullBidToken(id, msgSender, amount);
-
-        emit DepositIntoNextBid(id, msgSender, amount);
-    }
-
-    /// @inheritdoc IAmAmm
-    function withdrawFromNextBid(PoolId id, uint128 amount, address recipient) external virtual override {
-        /// -----------------------------------------------------------------------
-        /// Validation
-        /// -----------------------------------------------------------------------
-
-        address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
-
-        /// -----------------------------------------------------------------------
-        /// State updates
-        /// -----------------------------------------------------------------------
-
-        // update state machine
-        _updateAmAmmWrite(id);
-
-        Bid memory nextBid = _nextBids[id];
-
-        // only the next bid manager can withdraw from the next bid
-        if (msgSender != nextBid.manager) {
-            revert AmAmm__Unauthorized();
-        }
-
-        // ensure amount is a multiple of rent
-        if (amount % nextBid.rent != 0) {
-            revert AmAmm__InvalidDepositAmount();
-        }
-
-        // require D_next / R_next >= K
-        if ((nextBid.deposit - amount) / nextBid.rent < K(id)) {
-            revert AmAmm__BidLocked();
-        }
-
-        // deduct amount from next bid deposit
-        _nextBids[id].deposit = nextBid.deposit - amount;
-
-        /// -----------------------------------------------------------------------
-        /// External calls
-        /// -----------------------------------------------------------------------
-
-        // transfer amount to recipient
-        _pushBidToken(id, recipient, amount);
-
-        emit WithdrawFromNextBid(id, msgSender, recipient, amount);
-    }
-
-    /// @inheritdoc IAmAmm
-    function claimRefund(PoolId id, address recipient) external virtual override returns (uint256 refund) {
-        /// -----------------------------------------------------------------------
-        /// Validation
-        /// -----------------------------------------------------------------------
-
-        address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
 
         /// -----------------------------------------------------------------------
         /// State updates
@@ -376,18 +286,14 @@ abstract contract AmAmm is IAmAmm {
         PoolId id,
         uint128 additionalRent,
         uint128 updatedDeposit,
-        bool topBid,
+        bool isTopBid,
         address withdrawRecipient
-    ) external virtual override returns (uint128 amountDeposited, uint128 amountWithdrawn) {
+    ) external virtual override onlyAmAmmEnabled(id) returns (uint128 amountDeposited, uint128 amountWithdrawn) {
         /// -----------------------------------------------------------------------
         /// Validation
         /// -----------------------------------------------------------------------
 
         address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
 
         // noop if additionalRent is 0
         if (additionalRent == 0) return (0, 0);
@@ -399,7 +305,7 @@ abstract contract AmAmm is IAmAmm {
         // update state machine
         _updateAmAmmWrite(id);
 
-        Bid storage relevantBidStorage = topBid ? _topBids[id] : _nextBids[id];
+        Bid storage relevantBidStorage = isTopBid ? _topBids[id] : _nextBids[id];
         Bid memory relevantBid = relevantBidStorage;
 
         // must be the manager of the relevant bid
@@ -443,22 +349,18 @@ abstract contract AmAmm is IAmAmm {
         }
 
         emit IncreaseBidRent(
-            id, msgSender, additionalRent, updatedDeposit, topBid, withdrawRecipient, amountDeposited, amountWithdrawn
+            id, msgSender, additionalRent, updatedDeposit, isTopBid, withdrawRecipient, amountDeposited, amountWithdrawn
         );
     }
 
     /// @inheritdoc IAmAmm
-    function setBidPayload(PoolId id, bytes6 payload, bool topBid) external virtual override {
+    function setBidPayload(PoolId id, bytes6 payload, bool isTopBid) external virtual override onlyAmAmmEnabled(id) {
         address msgSender = LibMulticaller.senderOrSigner();
-
-        if (!_amAmmEnabled(id)) {
-            revert AmAmm__NotEnabled();
-        }
 
         // update state machine
         _updateAmAmmWrite(id);
 
-        Bid storage relevantBid = topBid ? _topBids[id] : _nextBids[id];
+        Bid storage relevantBid = isTopBid ? _topBids[id] : _nextBids[id];
 
         if (msgSender != relevantBid.manager) {
             revert AmAmm__Unauthorized();
@@ -470,7 +372,7 @@ abstract contract AmAmm is IAmAmm {
 
         relevantBid.payload = payload;
 
-        emit SetBidPayload(id, msgSender, payload, topBid);
+        emit SetBidPayload(id, msgSender, payload, isTopBid);
     }
 
     /// @inheritdoc IAmAmm
@@ -483,25 +385,15 @@ abstract contract AmAmm is IAmAmm {
     /// -----------------------------------------------------------------------
 
     /// @inheritdoc IAmAmm
-    function getTopBid(PoolId id) external view override returns (Bid memory topBid) {
-        (topBid,) = _updateAmAmmView(id);
+    function getBid(PoolId id, bool isTopBid) external view override returns (Bid memory) {
+        (Bid memory topBid, Bid memory nextBid) = _updateAmAmmView(id);
+        return isTopBid ? topBid : nextBid;
     }
 
     /// @inheritdoc IAmAmm
-    function getTopBidWrite(PoolId id) external override returns (Bid memory) {
+    function getBidWrite(PoolId id, bool isTopBid) external override returns (Bid memory) {
         _updateAmAmmWrite(id);
-        return _topBids[id];
-    }
-
-    /// @inheritdoc IAmAmm
-    function getNextBid(PoolId id) external view override returns (Bid memory nextBid) {
-        (, nextBid) = _updateAmAmmView(id);
-    }
-
-    /// @inheritdoc IAmAmm
-    function getNextBidWrite(PoolId id) external override returns (Bid memory) {
-        _updateAmAmmWrite(id);
-        return _nextBids[id];
+        return isTopBid ? _topBids[id] : _nextBids[id];
     }
 
     /// @inheritdoc IAmAmm
@@ -551,6 +443,12 @@ abstract contract AmAmm is IAmAmm {
     /// -----------------------------------------------------------------------
     /// Internal helpers
     /// -----------------------------------------------------------------------
+
+    function _checkAmAmmEnabled(PoolId id) internal view {
+        if (!_amAmmEnabled(id)) {
+            revert AmAmm__NotEnabled();
+        }
+    }
 
     /// @dev Charges rent and updates the top and next bids for a given pool
     function _updateAmAmmWrite(PoolId id) internal virtual {

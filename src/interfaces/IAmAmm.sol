@@ -54,27 +54,18 @@ interface IAmAmm {
     /// @param deposit The deposit amount, must be a multiple of rent and cover rent for >=K blocks
     function bid(PoolId id, address manager, bytes6 payload, uint128 rent, uint128 deposit) external;
 
-    /// @notice Adds deposit to the top bid. Only callable by topBids[id].manager.
+    /// @notice Adds deposit to the top/next bid. Only callable by topBids[id].manager or nextBids[id].manager (depending on `isTopBid`).
     /// @param id The pool id
     /// @param amount The amount to deposit, must be a multiple of rent
-    function depositIntoTopBid(PoolId id, uint128 amount) external;
+    /// @param isTopBid True if the top bid manager is depositing, false if the next bid manager is depositing
+    function depositIntoBid(PoolId id, uint128 amount, bool isTopBid) external;
 
-    /// @notice Withdraws from the deposit of the top bid. Only callable by topBids[id].manager. Reverts if D_top / R_top < K.
+    /// @notice Withdraws from the deposit of the top/next bid. Only callable by topBids[id].manager or nextBids[id].manager (depending on `isTopBid`). Reverts if D / R < K.
     /// @param id The pool id
-    /// @param amount The amount to withdraw, must be a multiple of rent and leave D_top / R_top >= K
+    /// @param amount The amount to withdraw, must be a multiple of rent and leave D / R >= K
     /// @param recipient The address of the recipient
-    function withdrawFromTopBid(PoolId id, uint128 amount, address recipient) external;
-
-    /// @notice Adds deposit to the next bid. Only callable by nextBids[id].manager.
-    /// @param id The pool id
-    /// @param amount The amount to deposit, must be a multiple of rent
-    function depositIntoNextBid(PoolId id, uint128 amount) external;
-
-    /// @notice Withdraws from the deposit of the next bid. Only callable by nextBids[id].manager. Reverts if D_next / R_next < K.
-    /// @param id The pool id
-    /// @param amount The amount to withdraw, must be a multiple of rent and leave D_next / R_next >= K
-    /// @param recipient The address of the recipient
-    function withdrawFromNextBid(PoolId id, uint128 amount, address recipient) external;
+    /// @param isTopBid True if the top bid manager is withdrawing, false if the next bid manager is withdrawing
+    function withdrawFromBid(PoolId id, uint128 amount, address recipient, bool isTopBid) external;
 
     /// @notice Claims the refundable deposit of a pool owed to msg.sender.
     /// @param id The pool id
@@ -93,7 +84,7 @@ interface IAmAmm {
     /// @param id The pool id
     /// @param additionalRent The additional rent to add
     /// @param updatedDeposit The updated deposit amount of the bid
-    /// @param topBid True if the top bid manager is increasing the rent and deposit, false if the next bid manager is increasing the rent and deposit
+    /// @param isTopBid True if the top bid manager is increasing the rent and deposit, false if the next bid manager is increasing the rent and deposit
     /// @param withdrawRecipient The address to withdraw the difference between the old and new deposits to
     /// @return amountDeposited The amount of deposit added, if any
     /// @return amountWithdrawn The amount of deposit withdrawn, if any
@@ -101,27 +92,25 @@ interface IAmAmm {
         PoolId id,
         uint128 additionalRent,
         uint128 updatedDeposit,
-        bool topBid,
+        bool isTopBid,
         address withdrawRecipient
     ) external returns (uint128 amountDeposited, uint128 amountWithdrawn);
 
     /// @notice Sets the payload of a pool. Only callable by the manager of either the top bid or the next bid.
     /// @param id The pool id
     /// @param payload The payload specifying e.g. the swap fee
-    /// @param topBid True if the top bid manager is setting the fee, false if the next bid manager is setting the fee
-    function setBidPayload(PoolId id, bytes6 payload, bool topBid) external;
+    /// @param isTopBid True if the top bid manager is setting the fee, false if the next bid manager is setting the fee
+    function setBidPayload(PoolId id, bytes6 payload, bool isTopBid) external;
 
-    /// @notice Gets the top bid of a pool
-    function getTopBid(PoolId id) external view returns (Bid memory);
+    /// @notice Gets the top/next bid of a pool
+    /// @param id The pool id
+    /// @param isTopBid True if the top bid is requested, false if the next bid is requested
+    function getBid(PoolId id, bool isTopBid) external view returns (Bid memory);
 
-    /// @notice Updates the am-AMM state of a pool and then gets the top bid
-    function getTopBidWrite(PoolId id) external returns (Bid memory);
-
-    /// @notice Gets the next bid of a pool
-    function getNextBid(PoolId id) external view returns (Bid memory);
-
-    /// @notice Updates the am-AMM state of a pool and then gets the next bid
-    function getNextBidWrite(PoolId id) external returns (Bid memory);
+    /// @notice Updates the am-AMM state of a pool and then gets the top/next bid
+    /// @param id The pool id
+    /// @param isTopBid True if the top bid is requested, false if the next bid is requested
+    function getBidWrite(PoolId id, bool isTopBid) external returns (Bid memory);
 
     /// @notice Gets the refundable deposit of a pool
     /// @param manager The address of the manager
