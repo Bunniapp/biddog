@@ -80,7 +80,7 @@ abstract contract AmAmm is IAmAmm {
 
     /// @inheritdoc IAmAmm
     function bid(PoolId id, address manager, bytes6 payload, uint128 rent, uint128 deposit)
-        external
+        public
         virtual
         override
         onlyAmAmmEnabled(id)
@@ -126,7 +126,7 @@ abstract contract AmAmm is IAmAmm {
     }
 
     /// @inheritdoc IAmAmm
-    function depositIntoBid(PoolId id, uint128 amount, bool isTopBid) external virtual override onlyAmAmmEnabled(id) {
+    function depositIntoBid(PoolId id, uint128 amount, bool isTopBid) public virtual override onlyAmAmmEnabled(id) {
         address msgSender = LibMulticaller.senderOrSigner();
 
         /// -----------------------------------------------------------------------
@@ -168,7 +168,7 @@ abstract contract AmAmm is IAmAmm {
 
     /// @inheritdoc IAmAmm
     function withdrawFromBid(PoolId id, uint128 amount, address recipient, bool isTopBid)
-        external
+        public
         virtual
         override
         onlyAmAmmEnabled(id)
@@ -219,7 +219,7 @@ abstract contract AmAmm is IAmAmm {
 
     /// @inheritdoc IAmAmm
     function claimRefund(PoolId id, address recipient)
-        external
+        public
         virtual
         override
         onlyAmAmmEnabled(id)
@@ -251,7 +251,7 @@ abstract contract AmAmm is IAmAmm {
     }
 
     /// @inheritdoc IAmAmm
-    function claimFees(Currency currency, address recipient) external virtual override returns (uint256 fees) {
+    function claimFees(Currency currency, address recipient) public virtual override returns (uint256 fees) {
         address msgSender = LibMulticaller.senderOrSigner();
 
         /// -----------------------------------------------------------------------
@@ -288,7 +288,7 @@ abstract contract AmAmm is IAmAmm {
         uint128 updatedDeposit,
         bool isTopBid,
         address withdrawRecipient
-    ) external virtual override onlyAmAmmEnabled(id) returns (uint128 amountDeposited, uint128 amountWithdrawn) {
+    ) public virtual override onlyAmAmmEnabled(id) returns (uint128 amountDeposited, uint128 amountWithdrawn) {
         /// -----------------------------------------------------------------------
         /// Validation
         /// -----------------------------------------------------------------------
@@ -354,7 +354,7 @@ abstract contract AmAmm is IAmAmm {
     }
 
     /// @inheritdoc IAmAmm
-    function setBidPayload(PoolId id, bytes6 payload, bool isTopBid) external virtual override onlyAmAmmEnabled(id) {
+    function setBidPayload(PoolId id, bytes6 payload, bool isTopBid) public virtual override onlyAmAmmEnabled(id) {
         address msgSender = LibMulticaller.senderOrSigner();
 
         // update state machine
