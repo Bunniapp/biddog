@@ -452,7 +452,7 @@ abstract contract AmAmm is IAmAmm {
 
     /// @dev Charges rent and updates the top and next bids for a given pool
     function _updateAmAmmWrite(PoolId id) internal virtual {
-        uint48 currentBlockIdx = uint48(block.number - _deploymentBlockNumber);
+        uint48 currentBlockIdx = uint48(BlockNumberLib.getBlockNumber() - _deploymentBlockNumber);
 
         // early return if the pool has already been updated in this block
         // condition is also true if no update has occurred for type(uint48).max blocks
